@@ -1388,9 +1388,345 @@ class TypingEngine {
 }
 
 // ============================================================================
-// 5. UI CONTROLLER & APPLICATION INITIALIZATION
+// 5. HEADER CONTROLLER (Shared across all pages)
 // ============================================================================
-class TopicTyperApp {
+class HeaderController {
+  constructor() {
+    this.searchForm = document.getElementById('header-search-form');
+    this.searchInput = document.getElementById('header-search-input');
+    this.searchBtn = document.getElementById('header-search-btn');
+    this.randomBtn = document.getElementById('header-random-btn');
+    this.soundToggleBtn = document.getElementById('sound-toggle-btn');
+    this.clockEl = document.getElementById('hud-clock');
+
+    this.init();
+  }
+
+  init() {
+    this.initSearch();
+    this.initSound();
+    this.initClock();
+    this.initKeyboardShortcuts();
+  }
+
+  initSearch() {
+    if (this.searchForm) {
+      this.searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const query = this.searchInput?.value.trim();
+        if (!query) return;
+
+        // If currently on the practice arena page, load the topic directly
+        if (window.practiceApp && typeof window.practiceApp.loadTopic === 'function') {
+          this.searchInput.value = '';
+          window.practiceApp.loadTopic(query);
+          try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('topic', query);
+            window.history.replaceState({}, '', url.toString());
+          } catch (err) {}
+        } else {
+          // Navigate to practice page with topic query
+          window.location.href = `practice.html?topic=${encodeURIComponent(query)}`;
+        }
+      });
+    }
+
+    if (this.randomBtn) {
+      this.randomBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (window.practiceApp && typeof window.practiceApp.loadRandomTopic === 'function') {
+          if (this.searchInput) this.searchInput.value = '';
+          window.practiceApp.loadRandomTopic();
+          try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('topic', 'random');
+            window.history.replaceState({}, '', url.toString());
+          } catch (err) {}
+        } else {
+          window.location.href = 'practice.html?topic=random';
+        }
+      });
+    }
+  }
+
+  initSound() {
+    if (!this.soundToggleBtn) return;
+    this.updateSoundBtn();
+    this.soundToggleBtn.addEventListener('click', () => {
+      SoundService.toggle();
+      this.updateSoundBtn();
+    });
+  }
+
+  updateSoundBtn() {
+    if (!this.soundToggleBtn) return;
+    const enabled = SoundService.enabled;
+    this.soundToggleBtn.classList.toggle('muted', !enabled);
+    const iconSpan = this.soundToggleBtn.querySelector('.btn-icon');
+    const labelSpan = this.soundToggleBtn.querySelector('.btn-label');
+    if (iconSpan) iconSpan.textContent = enabled ? '🔊' : '🔇';
+    if (labelSpan) labelSpan.textContent = enabled ? 'Sound: On' : 'Sound: Off';
+  }
+
+  initClock() {
+    if (!this.clockEl) return;
+    const update = () => {
+      const now = new Date();
+      this.clockEl.textContent = now.toTimeString().split(' ')[0];
+    };
+    update();
+    setInterval(update, 1000);
+  }
+
+  initKeyboardShortcuts() {
+    window.addEventListener('keydown', (e) => {
+      // Shortcut "/" focuses the header search input unless user is already typing in an input
+      if (e.key === '/' && this.searchInput) {
+        const activeTag = document.activeElement?.tagName;
+        if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA') {
+          const modalEl = document.getElementById('results-modal');
+          const isModalOpen = window.practiceApp?.isModalOpen || (modalEl && !modalEl.classList.contains('hidden'));
+          if (!isModalOpen) {
+            e.preventDefault();
+            this.searchInput.focus();
+            this.searchInput.select();
+          }
+        }
+      }
+    });
+  }
+}
+
+// ============================================================================
+// 6. HOME PAGE SETUP CONTROLLER (index.html)
+// ============================================================================
+class HomePageController {
+  constructor() {
+    this.selectedMode = 'paragraph'; // 'paragraph' | 'timed'
+    this.selectedDuration = 60; // 15 | 30 | 60 | 120
+    this.selectedTopic = 'Quantum Mechanics';
+    this.showMovingAvg = true;
+    this.sessionLogs = AnalyticsService.getSessions();
+
+    this.initDOMElements();
+    this.bindEvents();
+    this.renderAnalytics();
+  }
+
+  initDOMElements() {
+    this.modeParagraphCard = document.getElementById('mode-card-paragraph');
+    this.modeTimedCard = document.getElementById('mode-card-timed');
+    this.timedDurationSelector = document.getElementById('timed-duration-selector');
+    this.durationPills = document.querySelectorAll('.duration-pill');
+    this.topicCards = document.querySelectorAll('.topic-card');
+    this.customTopicInput = document.getElementById('custom-topic-input');
+    this.startPracticeBtn = document.getElementById('start-practice-btn');
+
+    // Analytics elements
+    this.wpmTrendCanvas = document.getElementById('wpm-trend-canvas');
+    this.chartTooltip = document.getElementById('chart-tooltip');
+    this.chartEmptyState = document.getElementById('chart-empty-state');
+    this.topWeakKeysList = document.getElementById('top-weak-keys-list');
+    this.keyboardHeatmap = document.getElementById('keyboard-heatmap');
+    this.practiceWeakKeysBtn = document.getElementById('practice-weak-keys-btn');
+    this.clearLogsBtn = document.getElementById('clear-logs-btn');
+    this.sessionLogsList = document.getElementById('session-logs-list');
+    this.sessionLogCount = document.getElementById('session-log-count');
+  }
+
+  bindEvents() {
+    // Mode Selection
+    if (this.modeParagraphCard && this.modeTimedCard) {
+      this.modeParagraphCard.addEventListener('click', () => this.selectMode('paragraph'));
+      this.modeTimedCard.addEventListener('click', () => this.selectMode('timed'));
+    }
+
+    // Duration Selection
+    this.durationPills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        this.durationPills.forEach(p => p.classList.remove('selected'));
+        pill.classList.add('selected');
+        this.selectedDuration = parseInt(pill.dataset.duration, 10) || 60;
+        this.updateStartUrl();
+      });
+    });
+
+    // Topic Cards Selection
+    this.topicCards.forEach(card => {
+      card.addEventListener('click', () => {
+        this.topicCards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        this.selectedTopic = card.dataset.topic || 'random';
+        if (this.customTopicInput) {
+          this.customTopicInput.value = '';
+        }
+        this.updateStartUrl();
+      });
+    });
+
+    // Custom Topic Input
+    if (this.customTopicInput) {
+      this.customTopicInput.addEventListener('input', () => {
+        const val = this.customTopicInput.value.trim();
+        if (val) {
+          this.topicCards.forEach(c => c.classList.remove('selected'));
+          this.selectedTopic = val;
+        } else {
+          const firstCard = this.topicCards[0];
+          if (firstCard) {
+            firstCard.classList.add('selected');
+            this.selectedTopic = firstCard.dataset.topic || 'random';
+          }
+        }
+        this.updateStartUrl();
+      });
+    }
+
+    // Start Practice Button Click
+    if (this.startPracticeBtn) {
+      this.startPracticeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const url = this.buildPracticeUrl();
+        window.location.href = url;
+      });
+    }
+
+    // Practice Weak Keys CTA
+    if (this.practiceWeakKeysBtn) {
+      this.practiceWeakKeysBtn.addEventListener('click', () => {
+        window.location.href = 'practice.html?mode=drill';
+      });
+    }
+
+    // Clear History & Analytics
+    if (this.clearLogsBtn) {
+      this.clearLogsBtn.addEventListener('click', () => {
+        if (confirm('Clear your practice history and reset weak keys analytics?')) {
+          AnalyticsService.clearSessions();
+          AnalyticsService.clearKeyStats();
+          this.sessionLogs = [];
+          this.renderAnalytics();
+        }
+      });
+    }
+
+    // Window Resize Chart Redraw
+    window.addEventListener('resize', () => {
+      if (this.wpmTrendCanvas) {
+        AnalyticsService.renderWpmChart(this.wpmTrendCanvas, this.chartTooltip, this.sessionLogs, {
+          showMovingAvg: this.showMovingAvg
+        });
+      }
+    });
+
+    this.updateStartUrl();
+  }
+
+  selectMode(mode) {
+    this.selectedMode = mode;
+    if (mode === 'timed') {
+      this.modeParagraphCard?.classList.remove('selected');
+      this.modeTimedCard?.classList.add('selected');
+      if (this.timedDurationSelector) {
+        this.timedDurationSelector.classList.remove('hidden');
+      }
+    } else {
+      this.modeTimedCard?.classList.remove('selected');
+      this.modeParagraphCard?.classList.add('selected');
+      if (this.timedDurationSelector) {
+        this.timedDurationSelector.classList.add('hidden');
+      }
+    }
+    this.updateStartUrl();
+  }
+
+  buildPracticeUrl() {
+    const params = new URLSearchParams();
+    if (this.selectedTopic) {
+      params.set('topic', this.selectedTopic);
+    }
+    params.set('mode', this.selectedMode);
+    if (this.selectedMode === 'timed') {
+      params.set('duration', this.selectedDuration);
+    }
+    return `practice.html?${params.toString()}`;
+  }
+
+  updateStartUrl() {
+    if (this.startPracticeBtn) {
+      this.startPracticeBtn.href = this.buildPracticeUrl();
+    }
+  }
+
+  renderAnalytics() {
+    this.sessionLogs = AnalyticsService.getSessions();
+
+    // 1. WPM Progress Chart
+    if (this.wpmTrendCanvas) {
+      if (this.sessionLogs.length === 0) {
+        this.chartEmptyState?.classList.remove('hidden');
+      } else {
+        this.chartEmptyState?.classList.add('hidden');
+      }
+      AnalyticsService.renderWpmChart(this.wpmTrendCanvas, this.chartTooltip, this.sessionLogs, {
+        showMovingAvg: this.showMovingAvg
+      });
+    }
+
+    // 2. Heatmap & Weak Keys Summary
+    if (this.keyboardHeatmap) {
+      AnalyticsService.renderHeatmap(this.keyboardHeatmap);
+    }
+    if (this.topWeakKeysList) {
+      AnalyticsService.renderWeakKeysSummary(this.topWeakKeysList);
+    }
+
+    // 3. Session Logs List
+    this.renderSessionLogs();
+  }
+
+  renderSessionLogs() {
+    if (!this.sessionLogsList) return;
+    if (this.sessionLogCount) {
+      this.sessionLogCount.textContent = `${this.sessionLogs.length} session${this.sessionLogs.length === 1 ? '' : 's'} recorded`;
+    }
+    if (this.sessionLogs.length === 0) {
+      this.sessionLogsList.innerHTML = `
+        <div class="empty-log-state">
+          <span class="empty-icon">📝</span> No practice runs recorded yet. Start a practice session above to track your progress!
+        </div>
+      `;
+      return;
+    }
+
+    this.sessionLogsList.innerHTML = '';
+    this.sessionLogs.forEach((log) => {
+      const row = document.createElement('div');
+      row.className = 'session-log-row';
+      const modeLabel = log.mode === 'drill' 
+        ? 'Weak Keys Drill' 
+        : (log.mode === 'timed' ? `Timed Sprint (${log.timeLimit || 60}s)` : (log.totalChunks > 1 ? `Part ${log.chunkIndex} of ${log.totalChunks}` : 'Paragraph'));
+      row.innerHTML = `
+        <div class="log-meta">
+          <span class="log-topic-name">${log.topic}</span>
+          <span class="log-chunk-badge">${modeLabel}</span>
+          <span class="log-timestamp">${log.timestamp || ''}</span>
+        </div>
+        <div class="log-stats">
+          <span class="log-stat-wpm">${log.wpm} <span class="stat-unit-tiny">WPM</span></span>
+          <span class="log-stat-acc">${log.accuracy}% <span class="stat-unit-tiny">Acc</span></span>
+        </div>
+      `;
+      this.sessionLogsList.appendChild(row);
+    });
+  }
+}
+
+// ============================================================================
+// 7. DISTRACTION-FREE TYPING ARENA CONTROLLER (practice.html)
+// ============================================================================
+class PracticePageController {
   constructor() {
     this.chunks = [];
     this.currentChunkIndex = 0;
@@ -1398,75 +1734,52 @@ class TopicTyperApp {
     this.sessionLogs = AnalyticsService.getSessions();
     this.isModalOpen = false;
 
+    this.urlParams = new URLSearchParams(window.location.search);
+    this.mode = this.urlParams.get('mode') || 'paragraph'; // 'paragraph' | 'timed' | 'drill'
+    this.timeLimit = parseInt(this.urlParams.get('duration'), 10) || 60;
+    this.requestedTopic = this.urlParams.get('topic') || '';
+
     this.initDOMElements();
     this.hideResultsModal();
-    this.initClock();
-    this.initAnalyticsUI();
     this.initTypingEngine();
     this.bindUIEvents();
-    this.renderPresetTags();
 
-    // On startup: load a dynamic random topic from Wikipedia!
-    this.loadRandomTopic();
+    this.startSession();
   }
 
   initDOMElements() {
-    // Header & Controls
-    this.soundToggleBtn = document.getElementById('sound-toggle-btn');
-    this.historyToggleBtn = document.getElementById('history-toggle-btn');
-    this.topicForm = document.getElementById('topic-form');
-    this.topicInput = document.getElementById('topic-input');
-    this.searchSubmitBtn = document.getElementById('search-submit-btn');
-    this.randomTopicBtn = document.getElementById('random-topic-btn');
-    this.quickTagsContainer = document.getElementById('quick-tags-container');
-    this.shufflePresetLink = document.getElementById('shuffle-preset-link');
-    this.statusBanner = document.getElementById('status-banner');
-    this.bannerSpinner = document.getElementById('banner-spinner');
-    this.bannerMessage = document.getElementById('banner-message');
+    // Arena Meta
+    this.articleTitle = document.getElementById('arena-article-title');
+    this.articleDescription = document.getElementById('arena-article-desc');
+    this.wikiExternalLink = document.getElementById('arena-wiki-link');
+    this.arenaModePill = document.getElementById('arena-mode-pill');
+    this.paragraphCounterPill = document.getElementById('paragraph-counter-pill');
 
-    // Article Meta
-    this.articleTitle = document.getElementById('article-title');
-    this.wikiExternalLink = document.getElementById('wiki-external-link');
-    this.articleDescription = document.getElementById('article-description');
-    this.chunkCounter = document.getElementById('chunk-counter');
-    this.chunkWordCount = document.getElementById('chunk-word-count');
-    this.prevChunkBtn = document.getElementById('prev-chunk-btn');
-    this.nextChunkBtn = document.getElementById('next-chunk-btn');
-
-    // HUD Dashboard
+    // Arena HUD
     this.statWpm = document.getElementById('stat-wpm');
     this.statAccuracy = document.getElementById('stat-accuracy');
     this.statTime = document.getElementById('stat-time');
-    this.statProgressText = document.getElementById('stat-progress-text');
-    this.progressPercent = document.getElementById('progress-percent');
-    this.progressBarFill = document.getElementById('progress-bar-fill');
-    this.streamStatusBadge = document.getElementById('stream-status-badge');
+    this.statProgress = document.getElementById('stat-progress');
+    this.hudTimeLabel = document.getElementById('hud-time-label');
+    this.idleBadge = document.getElementById('idle-status-badge');
 
-    // Typing Practice Area
+    // Status Banner / Loading
+    this.statusBanner = document.getElementById('status-banner');
+    this.bannerMessage = document.getElementById('banner-message');
+    this.bannerSpinner = document.getElementById('banner-spinner');
+
+    // Typing Practice Arena
     this.typingSection = document.getElementById('typing-section');
     this.wordsContainer = document.getElementById('words-container');
     this.caret = document.getElementById('caret');
     this.hiddenInput = document.getElementById('hidden-input');
     this.focusOverlay = document.getElementById('focus-overlay');
 
-    // Action Bar
+    // Action Controls
     this.restartChunkBtn = document.getElementById('restart-chunk-btn');
-    this.skipChunkBtn = document.getElementById('skip-chunk-btn');
+    this.nextChunkBtn = document.getElementById('next-chunk-btn');
 
-    // Performance Analytics & Weak Keys
-    this.wpmTrendCanvas = document.getElementById('wpm-trend-canvas');
-    this.chartTooltip = document.getElementById('chart-tooltip');
-    this.chartEmptyState = document.getElementById('chart-empty-state');
-    this.topWeakKeysList = document.getElementById('top-weak-keys-list');
-    this.keyboardHeatmap = document.getElementById('keyboard-heatmap');
-    this.practiceWeakKeysBtn = document.getElementById('practice-weak-keys-btn');
-
-    // Session Logs
-    this.sessionLogsList = document.getElementById('session-logs-list');
-    this.sessionLogCount = document.getElementById('session-log-count');
-    this.clearLogsBtn = document.getElementById('clear-logs-btn');
-
-    // Modal & Mini Chart
+    // Results Modal & Mini Trend Chart
     this.resultsModal = document.getElementById('results-modal');
     this.modalBackdrop = document.getElementById('modal-backdrop');
     this.modalCard = document.getElementById('modal-card');
@@ -1488,183 +1801,105 @@ class TopicTyperApp {
       wordsContainer: this.wordsContainer,
       caret: this.caret,
       hiddenInput: this.hiddenInput,
+      mode: this.mode === 'timed' ? 'timed' : 'paragraph',
+      timeLimit: this.timeLimit,
       onMetricsUpdate: (metrics) => this.renderHUD(metrics),
-      onComplete: (finalMetrics) => this.showResultsModal(finalMetrics)
+      onComplete: (finalMetrics) => this.showResultsModal(finalMetrics),
+      onPauseStateChange: (isPaused) => {
+        if (this.idleBadge) {
+          this.idleBadge.classList.toggle('hidden', !isPaused);
+        }
+      }
     });
-  }
-
-  /**
-   * Shuffles and renders preset tags with diverse categories
-   */
-  renderPresetTags() {
-    if (!this.quickTagsContainer) return;
-    this.quickTagsContainer.innerHTML = '';
-
-    // Pick 8 random distinct topics from curated pool
-    const pool = [...WikipediaService.curatedTopics];
-    const shuffled = pool.sort(() => 0.5 - Math.random()).slice(0, 8);
-
-    shuffled.forEach(item => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'quick-tag-btn';
-      btn.dataset.topic = item.title;
-      btn.textContent = `${item.icon} ${item.title}`;
-      btn.addEventListener('click', () => {
-        this.topicInput.value = '';
-        this.loadTopic(item.title);
-      });
-      this.quickTagsContainer.appendChild(btn);
-    });
-
-    // Add Shuffle button
-    const shuffleBtn = document.createElement('button');
-    shuffleBtn.type = 'button';
-    shuffleBtn.className = 'quick-tag-btn shuffle-btn';
-    shuffleBtn.id = 'shuffle-tags-btn';
-    shuffleBtn.title = 'Show More Topics';
-    shuffleBtn.textContent = '🔀 More Topics';
-    shuffleBtn.addEventListener('click', () => this.renderPresetTags());
-    this.quickTagsContainer.appendChild(shuffleBtn);
   }
 
   bindUIEvents() {
-    // Topic Form Submit
-    this.topicForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const topic = this.topicInput.value.trim();
-      if (topic) {
-        this.loadTopic(topic);
-      }
-    });
-
-    // Random Topic Button
-    this.randomTopicBtn.addEventListener('click', () => {
-      this.loadRandomTopic();
-    });
-
-    // Shuffle Preset Header Link
-    if (this.shufflePresetLink) {
-      this.shufflePresetLink.addEventListener('click', () => {
-        this.renderPresetTags();
-      });
-    }
-
-    // Practice Weak Keys Button
-    if (this.practiceWeakKeysBtn) {
-      this.practiceWeakKeysBtn.addEventListener('click', () => {
-        this.startWeakKeysDrill();
-      });
-    }
-
-    // Clear Session History & Keystrokes Stats Button
-    if (this.clearLogsBtn) {
-      this.clearLogsBtn.addEventListener('click', () => {
-        if (confirm('Clear your practice history and reset weak keys analytics?')) {
-          AnalyticsService.clearSessions();
-          AnalyticsService.clearKeyStats();
-          this.sessionLogs = [];
-          this.updateAnalyticsUI();
-        }
-      });
-    }
-
-    // Window Resize Chart Redraw
-    window.addEventListener('resize', () => {
-      if (this.wpmTrendCanvas) {
-        AnalyticsService.renderWpmChart(this.wpmTrendCanvas, this.chartTooltip, this.sessionLogs);
-      }
-      if (this.isModalOpen && this.modalWpmCanvas) {
-        AnalyticsService.renderWpmChart(this.modalWpmCanvas, this.modalChartTooltip, this.sessionLogs, { isModal: true });
-      }
-    });
-
-    // Sound Toggle
-    this.soundToggleBtn.addEventListener('click', () => {
-      const enabled = SoundService.toggle();
-      this.soundToggleBtn.classList.toggle('muted', !enabled);
-      this.soundToggleBtn.querySelector('.btn-icon').textContent = enabled ? '🔊' : '🔇';
-      this.soundToggleBtn.querySelector('.btn-label').textContent = enabled ? 'Sound: On' : 'Sound: Off';
-    });
-
-    // History Button (scroll to history section)
-    if (this.historyToggleBtn) {
-      this.historyToggleBtn.addEventListener('click', () => {
-        const historySection = document.getElementById('card-session-logs');
-        if (historySection) {
-          historySection.scrollIntoView({ behavior: 'smooth' });
-        }
-      });
-    }
-
     // Focus Management
-    this.typingSection.addEventListener('click', () => {
-      if (!this.isModalOpen) this.focusTypingArea();
-    });
-    this.focusOverlay.addEventListener('click', () => {
-      if (!this.isModalOpen) this.focusTypingArea();
-    });
+    if (this.typingSection) {
+      this.typingSection.addEventListener('click', () => {
+        if (!this.isModalOpen) this.focusTypingArea();
+      });
+    }
+    if (this.focusOverlay) {
+      this.focusOverlay.addEventListener('click', () => {
+        if (!this.isModalOpen) this.focusTypingArea();
+      });
+    }
 
-    this.hiddenInput.addEventListener('focus', () => {
-      if (this.isModalOpen || !this.resultsModal.classList.contains('hidden')) {
-        this.hiddenInput.blur();
-        return;
-      }
-      this.typingSection.classList.add('focused');
-      this.focusOverlay.classList.add('hidden');
-    });
+    if (this.hiddenInput) {
+      this.hiddenInput.addEventListener('focus', () => {
+        if (this.isModalOpen || !this.resultsModal?.classList.contains('hidden')) {
+          this.hiddenInput.blur();
+          return;
+        }
+        this.typingSection?.classList.add('focused');
+        this.focusOverlay?.classList.add('hidden');
+      });
 
-    this.hiddenInput.addEventListener('blur', () => {
-      if (document.activeElement === this.topicInput || this.isModalOpen || !this.resultsModal.classList.contains('hidden')) {
-        return;
-      }
-      this.typingSection.classList.remove('focused');
-      this.focusOverlay.classList.remove('hidden');
-    });
+      this.hiddenInput.addEventListener('blur', () => {
+        const headerInput = document.getElementById('header-search-input');
+        if (document.activeElement === headerInput || this.isModalOpen || !this.resultsModal?.classList.contains('hidden')) {
+          return;
+        }
+        this.typingSection?.classList.remove('focused');
+        this.focusOverlay?.classList.remove('hidden');
+      });
+    }
 
-    // Chunk Navigation Buttons
-    this.prevChunkBtn.addEventListener('click', () => this.changeChunk(-1));
-    this.nextChunkBtn.addEventListener('click', () => this.changeChunk(1));
-    this.skipChunkBtn.addEventListener('click', () => this.changeChunk(1));
-    this.restartChunkBtn.addEventListener('click', () => this.restartCurrentChunk());
+    // Action Buttons
+    if (this.restartChunkBtn) {
+      this.restartChunkBtn.addEventListener('click', () => this.restartCurrentChunk());
+    }
+    if (this.nextChunkBtn) {
+      this.nextChunkBtn.addEventListener('click', () => this.changeChunk(1));
+    }
 
-    // Modal Actions & Outside Click Handling
-    this.modalNextBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      this.advanceFromModal();
-    });
+    // Modal Actions
+    if (this.modalNextBtn) {
+      this.modalNextBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.advanceFromModal();
+      });
+    }
+    if (this.modalRetryBtn) {
+      this.modalRetryBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.retryFromModal();
+      });
+    }
 
-    this.modalRetryBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      this.retryFromModal();
-    });
-
-    // Clicking backdrop / anywhere outside modal-card dismisses cleanly
-    this.modalBackdrop.addEventListener('click', (e) => {
-      e.preventDefault();
-      this.dismissModal();
-    });
-
-    this.resultsModal.addEventListener('click', (e) => {
-      if (e.target === this.resultsModal) {
+    // Modal Dismiss Backdrop
+    if (this.modalBackdrop) {
+      this.modalBackdrop.addEventListener('click', (e) => {
         e.preventDefault();
         this.dismissModal();
-      }
-    });
-
+      });
+    }
+    if (this.resultsModal) {
+      this.resultsModal.addEventListener('click', (e) => {
+        if (e.target === this.resultsModal) {
+          e.preventDefault();
+          this.dismissModal();
+        }
+      });
+    }
     if (this.modalCard) {
       this.modalCard.addEventListener('click', (e) => {
         e.stopPropagation();
       });
     }
 
-    // Global Keyboard Shortcuts
+    // Window Resize Chart Redraw
+    window.addEventListener('resize', () => {
+      if (this.isModalOpen && this.modalWpmCanvas) {
+        AnalyticsService.renderWpmChart(this.modalWpmCanvas, this.modalChartTooltip, this.sessionLogs, { isModal: true });
+      }
+    });
+
+    // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
-      // While isModalOpen is true:
-      // - Enter or Space triggers "Next Chunk", hides modal, resets isModalOpen = false, re-focuses typing input
-      // - Escape triggers "Retry Chunk", hides modal, re-focuses typing input
-      // - Background keystrokes are completely ignored
-      if (this.isModalOpen || !this.resultsModal.classList.contains('hidden')) {
+      // While modal is open
+      if (this.isModalOpen || !this.resultsModal?.classList.contains('hidden')) {
         if (e.key === 'Escape') {
           e.preventDefault();
           e.stopPropagation();
@@ -1683,7 +1918,6 @@ class TopicTyperApp {
           }
           return;
         }
-        // Allow Tab to cycle focus between modal controls
         if (e.key === 'Tab') {
           const focusable = [this.modalNextBtn, this.modalRetryBtn, this.modalWikiLink].filter(Boolean);
           if (focusable.length > 0) {
@@ -1703,113 +1937,118 @@ class TopicTyperApp {
           }
           return;
         }
-        // Intercept keys so they don't bleed into typing area
         e.preventDefault();
         e.stopPropagation();
         return;
       }
 
-      // Shortcut: "/" to focus topic search input
-      if (e.key === '/' && document.activeElement !== this.topicInput) {
-        e.preventDefault();
-        this.topicInput.focus();
-        this.topicInput.select();
-        return;
-      }
-
-      // Shortcut: Escape to restart current chunk
+      // Escape to restart current chunk
       if (e.key === 'Escape') {
-        this.restartCurrentChunk();
+        const headerInput = document.getElementById('header-search-input');
+        if (document.activeElement !== headerInput) {
+          this.restartCurrentChunk();
+        }
         return;
       }
 
-      // Shortcut: Tab to jump to next chunk
-      if (e.key === 'Tab' && document.activeElement !== this.topicInput) {
-        e.preventDefault();
-        this.changeChunk(1);
+      // Tab to advance to next chunk
+      if (e.key === 'Tab') {
+        const headerInput = document.getElementById('header-search-input');
+        if (document.activeElement !== headerInput) {
+          e.preventDefault();
+          this.changeChunk(1);
+        }
         return;
       }
 
-      // Focus typing area if pressing printable keys while not in an input
-      if (document.activeElement !== this.topicInput && 
-          document.activeElement !== this.hiddenInput && 
+      // Printable character typing while not in an input
+      const headerInput = document.getElementById('header-search-input');
+      if (document.activeElement !== headerInput &&
+          document.activeElement !== this.hiddenInput &&
           !this.isModalOpen &&
-          this.resultsModal.classList.contains('hidden') &&
+          this.resultsModal?.classList.contains('hidden') &&
           e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         this.focusTypingArea();
       }
     });
   }
 
-  focusTypingArea() {
-    if (this.isModalOpen || !this.resultsModal.classList.contains('hidden')) return;
-    this.hiddenInput.value = '';
-    this.hiddenInput.focus();
-    this.typingSection.classList.add('focused');
-    this.focusOverlay.classList.add('hidden');
-    this.engine.updateCaretPosition();
+  startSession() {
+    if (this.mode === 'drill') {
+      this.loadWeakKeysDrill();
+    } else if (this.requestedTopic && this.requestedTopic !== 'random') {
+      this.loadTopic(this.requestedTopic);
+    } else {
+      this.loadRandomTopic();
+    }
   }
 
   showStatus(msg, type = 'info') {
+    if (!this.statusBanner) return;
     this.statusBanner.className = `status-banner banner-${type}`;
-    this.bannerMessage.textContent = msg;
-    this.bannerSpinner.classList.toggle('hidden', type !== 'loading');
+    if (this.bannerMessage) this.bannerMessage.textContent = msg;
+    if (this.bannerSpinner) this.bannerSpinner.classList.toggle('hidden', type !== 'loading');
     this.statusBanner.classList.remove('hidden');
   }
 
   hideStatus() {
-    this.statusBanner.classList.add('hidden');
+    if (this.statusBanner) {
+      this.statusBanner.classList.add('hidden');
+    }
   }
 
   async loadRandomTopic() {
-    this.showStatus('Finding an interesting topic for you...', 'loading');
-    this.searchSubmitBtn.disabled = true;
-    this.randomTopicBtn.disabled = true;
-
+    this.showStatus('Finding an interesting Wikipedia topic...', 'loading');
     try {
       const data = await WikipediaService.fetchRandomTopicSummary();
-      this.topicInput.value = ''; // Keep search input completely empty!
       this.processLoadedTopic(data);
     } catch (err) {
       console.error(err);
-      this.showStatus('Could not load random topic. Trying a featured topic...', 'error');
-      // Curated fallback
+      this.showStatus('Could not load random topic. Loading featured article...', 'error');
       const fallbackItem = WikipediaService.curatedTopics[Math.floor(Math.random() * WikipediaService.curatedTopics.length)];
       try {
         const fbData = await WikipediaService.fetchTopicSummary(fallbackItem.title);
-        this.topicInput.value = '';
         this.processLoadedTopic(fbData);
       } catch (e2) {
         this.loadTopic(fallbackItem.title);
       }
-    } finally {
-      this.topicInput.value = ''; // Ensure search input stays clean & empty
-      this.searchSubmitBtn.disabled = false;
-      this.randomTopicBtn.disabled = false;
     }
   }
 
   async loadTopic(topicQuery) {
     this.showStatus(`Loading "${topicQuery}" from Wikipedia...`, 'loading');
-    this.searchSubmitBtn.disabled = true;
-    this.randomTopicBtn.disabled = true;
-
     try {
       const data = await WikipediaService.fetchTopicSummary(topicQuery);
       this.processLoadedTopic(data);
     } catch (err) {
       console.error(err);
       this.showStatus(err.message || 'Failed to fetch topic summary.', 'error');
-    } finally {
-      this.searchSubmitBtn.disabled = false;
-      this.randomTopicBtn.disabled = false;
     }
+  }
+
+  loadWeakKeysDrill() {
+    const drill = AnalyticsService.generateWeakDrill(40);
+    const focusKeysStr = drill.weakKeys.map(k => k.toUpperCase()).join(', ');
+
+    this.currentTopicData = {
+      title: `🎯 Weak Keys Drill [${focusKeysStr}]`,
+      description: `Targeted 40-word accuracy drill designed to strengthen finger dexterity for keys: ${focusKeysStr}.`,
+      url: '#'
+    };
+
+    this.chunks = [drill.wordsText];
+    this.currentChunkIndex = 0;
+    this.updateArticleMetaUI();
+    if (this.wikiExternalLink) {
+      this.wikiExternalLink.style.display = 'none';
+    }
+    this.loadActiveChunk();
+    this.hideStatus();
+    this.focusTypingArea();
   }
 
   processLoadedTopic(data) {
     this.currentTopicData = data;
-
-    // Sanitize & Chunk into 50-70 word typing chunks
     this.chunks = TextSanitizer.chunkText(data.extract, 50, 70);
 
     if (this.chunks.length === 0) {
@@ -1826,29 +2065,55 @@ class TopicTyperApp {
   updateArticleMetaUI() {
     if (!this.currentTopicData) return;
 
-    this.articleTitle.textContent = this.currentTopicData.title;
-    this.articleDescription.textContent = this.currentTopicData.description || 'Wikipedia Summary';
-    this.wikiExternalLink.href = this.currentTopicData.url;
-    this.modalWikiLink.href = this.currentTopicData.url;
+    if (this.articleTitle) this.articleTitle.textContent = this.currentTopicData.title;
+    if (this.articleDescription) this.articleDescription.textContent = this.currentTopicData.description || 'Wikipedia Extract';
+
+    if (this.wikiExternalLink) {
+      if (this.currentTopicData.url && this.currentTopicData.url !== '#') {
+        this.wikiExternalLink.href = this.currentTopicData.url;
+        this.wikiExternalLink.style.display = 'inline-flex';
+      } else {
+        this.wikiExternalLink.style.display = 'none';
+      }
+    }
+
+    if (this.modalWikiLink) {
+      if (this.currentTopicData.url && this.currentTopicData.url !== '#') {
+        this.modalWikiLink.href = this.currentTopicData.url;
+        this.modalWikiLink.style.display = 'inline-flex';
+      } else {
+        this.modalWikiLink.style.display = 'none';
+      }
+    }
+
+    if (this.arenaModePill) {
+      if (this.mode === 'drill') {
+        this.arenaModePill.textContent = 'Weak Keys Drill';
+      } else if (this.mode === 'timed') {
+        this.arenaModePill.textContent = `Timed Sprint (${this.timeLimit}s)`;
+      } else {
+        this.arenaModePill.textContent = 'Complete Paragraph';
+      }
+    }
+
+    if (this.hudTimeLabel) {
+      this.hudTimeLabel.textContent = (this.mode === 'timed') ? 'Remaining' : 'Time';
+    }
   }
 
   loadActiveChunk() {
     if (this.chunks.length === 0) return;
 
     const chunkText = this.chunks[this.currentChunkIndex];
-    const wordCount = chunkText.split(/\s+/).filter(Boolean).length;
+    if (this.paragraphCounterPill) {
+      this.paragraphCounterPill.textContent = `Paragraph ${this.currentChunkIndex + 1} of ${this.chunks.length}`;
+    }
 
-    // Update chunk badges
-    this.chunkCounter.textContent = `Paragraph ${this.currentChunkIndex + 1} of ${this.chunks.length}`;
-    this.chunkWordCount.textContent = `${wordCount} words`;
+    if (this.nextChunkBtn) {
+      const isLast = (this.currentChunkIndex === this.chunks.length - 1);
+      this.nextChunkBtn.querySelector('span').textContent = isLast ? '↺ Practice Again [Tab]' : 'Next Paragraph [Tab] ➔';
+    }
 
-    // Update navigation buttons
-    this.prevChunkBtn.disabled = (this.currentChunkIndex === 0);
-    this.nextChunkBtn.disabled = (this.currentChunkIndex === this.chunks.length - 1);
-    this.skipChunkBtn.querySelector('span').textContent = 
-      (this.currentChunkIndex === this.chunks.length - 1) ? '↺ Practice Again [Tab]' : 'Next Paragraph [Tab] ➔';
-
-    // Load chunk into engine
     this.engine.loadChunk(chunkText);
     this.focusTypingArea();
   }
@@ -1868,6 +2133,17 @@ class TopicTyperApp {
     this.loadActiveChunk();
   }
 
+  focusTypingArea() {
+    if (this.isModalOpen || !this.resultsModal?.classList.contains('hidden')) return;
+    if (this.hiddenInput) {
+      this.hiddenInput.value = '';
+      this.hiddenInput.focus();
+    }
+    this.typingSection?.classList.add('focused');
+    this.focusOverlay?.classList.add('hidden');
+    this.engine?.updateCaretPosition();
+  }
+
   formatTime(seconds) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -1875,78 +2151,60 @@ class TopicTyperApp {
   }
 
   renderHUD(metrics) {
-    this.statWpm.textContent = metrics.wpm;
-    this.statAccuracy.textContent = `${metrics.accuracy}%`;
-    this.statTime.textContent = this.formatTime(metrics.elapsedSeconds);
-    this.statProgressText.textContent = `${metrics.correctChars} / ${metrics.totalTargetChars}`;
-    this.progressPercent.textContent = `${metrics.progressPercent}%`;
-    this.progressBarFill.style.width = `${metrics.progressPercent}%`;
+    if (this.statWpm) this.statWpm.textContent = metrics.wpm;
+    if (this.statAccuracy) this.statAccuracy.textContent = `${metrics.accuracy}%`;
 
-    // Update Progress Status Badge
-    if (this.streamStatusBadge) {
-      if (metrics.progressPercent === 100) {
-        this.streamStatusBadge.textContent = 'Completed!';
-        this.streamStatusBadge.className = 'progress-status-badge status-complete';
-      } else if (metrics.progressPercent > 0) {
-        this.streamStatusBadge.textContent = `Typing: ${metrics.progressPercent}%`;
-        this.streamStatusBadge.className = 'progress-status-badge status-active';
+    if (this.statTime) {
+      if (this.mode === 'timed') {
+        this.statTime.textContent = this.formatTime(metrics.remainingSeconds);
       } else {
-        this.streamStatusBadge.textContent = 'Ready to type';
-        this.streamStatusBadge.className = 'progress-status-badge';
+        this.statTime.textContent = this.formatTime(metrics.elapsedSeconds);
       }
+    }
+
+    if (this.statProgress) {
+      this.statProgress.textContent = `${metrics.progressPercent}%`;
     }
   }
 
   showResultsModal(finalMetrics) {
-    // Guard: ONLY trigger when targetText.length > 0 and currentIndex >= targetText.length
-    // Never trigger on empty 0 / 0 state during initial load or API fetch
     const targetText = this.engine?.targetText || '';
     const currentIndex = this.engine?.currentIndex ?? this.engine?.activeCharIndex ?? 0;
-    if (!targetText || targetText.length === 0 || currentIndex < targetText.length) {
-      return;
-    }
+    if (!targetText || targetText.length === 0) return;
+    if (this.mode !== 'timed' && currentIndex < targetText.length) return;
 
     this.isModalOpen = true;
-    if (this.engine) {
-      this.engine.isModalOpen = true;
-    }
+    if (this.engine) this.engine.isModalOpen = true;
 
-    // Immediately blur hidden input and remove arena focus
-    if (this.hiddenInput) {
-      this.hiddenInput.blur();
-    }
-    if (this.typingSection) {
-      this.typingSection.classList.remove('focused');
-    }
+    if (this.hiddenInput) this.hiddenInput.blur();
+    if (this.typingSection) this.typingSection.classList.remove('focused');
 
     finalMetrics = finalMetrics || this.engine.computeMetrics();
 
-    this.resWpm.textContent = finalMetrics.wpm;
-    this.resAccuracy.textContent = `${finalMetrics.accuracy}%`;
-    this.resTime.textContent = this.formatTime(finalMetrics.elapsedSeconds);
-    this.resRawWpm.textContent = finalMetrics.rawWpm;
-    this.resErrors.textContent = finalMetrics.errorCount;
-    this.resChars.textContent = `${finalMetrics.correctChars} / ${finalMetrics.totalTargetChars}`;
+    if (this.resWpm) this.resWpm.textContent = finalMetrics.wpm;
+    if (this.resAccuracy) this.resAccuracy.textContent = `${finalMetrics.accuracy}%`;
+    if (this.resTime) this.resTime.textContent = this.formatTime(finalMetrics.elapsedSeconds);
+    if (this.resRawWpm) this.resRawWpm.textContent = finalMetrics.rawWpm;
+    if (this.resErrors) this.resErrors.textContent = finalMetrics.errorCount;
+    if (this.resChars) this.resChars.textContent = `${finalMetrics.correctChars} / ${finalMetrics.totalTargetChars}`;
 
-    if (this.currentChunkIndex < this.chunks.length - 1) {
-      this.modalNextBtn.querySelector('span').textContent = 'Next Paragraph [Enter / Space] ↵';
-    } else {
-      this.modalNextBtn.querySelector('span').textContent = 'Practice Again [Enter / Space] ↵';
+    if (this.modalNextBtn) {
+      if (this.currentChunkIndex < this.chunks.length - 1) {
+        this.modalNextBtn.querySelector('span').textContent = 'Next Paragraph [Enter / Space] ↵';
+      } else {
+        this.modalNextBtn.querySelector('span').textContent = 'Practice Again [Enter / Space] ↵';
+      }
     }
 
-    // Record completed run to Session Logs
     this.recordSessionLog(finalMetrics);
+    this.resultsModal?.classList.remove('hidden');
 
-    this.resultsModal.classList.remove('hidden');
-
-    // Render modal trend chart
     requestAnimationFrame(() => {
       if (this.modalWpmCanvas) {
         AnalyticsService.renderWpmChart(this.modalWpmCanvas, this.modalChartTooltip, this.sessionLogs, { isModal: true });
       }
     });
 
-    // Automatically focus primary modal action button
     setTimeout(() => {
       if (this.isModalOpen && this.modalNextBtn) {
         this.modalNextBtn.focus();
@@ -1972,52 +2230,8 @@ class TopicTyperApp {
 
   hideResultsModal() {
     this.isModalOpen = false;
-    if (this.engine) {
-      this.engine.isModalOpen = false;
-    }
-    this.resultsModal.classList.add('hidden');
-  }
-
-  // ==========================================================================
-  // Real-Time Clock & Analytics UI Integration
-  // ==========================================================================
-
-  initClock() {
-    const clockEl = document.getElementById('hud-clock');
-    if (!clockEl) return;
-    const update = () => {
-      const now = new Date();
-      clockEl.textContent = now.toTimeString().split(' ')[0];
-    };
-    update();
-    setInterval(update, 1000);
-  }
-
-  initAnalyticsUI() {
-    this.updateAnalyticsUI();
-  }
-
-  updateAnalyticsUI() {
-    // 1. Session Logs List & Counter
-    this.renderSessionLogs();
-
-    // 2. WPM Progress Chart
-    if (this.wpmTrendCanvas) {
-      if (this.sessionLogs.length === 0) {
-        this.chartEmptyState?.classList.remove('hidden');
-      } else {
-        this.chartEmptyState?.classList.add('hidden');
-      }
-      AnalyticsService.renderWpmChart(this.wpmTrendCanvas, this.chartTooltip, this.sessionLogs);
-    }
-
-    // 3. Heatmap & Weak Keys Summary
-    if (this.keyboardHeatmap) {
-      AnalyticsService.renderHeatmap(this.keyboardHeatmap);
-    }
-    if (this.topWeakKeysList) {
-      AnalyticsService.renderWeakKeysSummary(this.topWeakKeysList);
-    }
+    if (this.engine) this.engine.isModalOpen = false;
+    this.resultsModal?.classList.add('hidden');
   }
 
   recordSessionLog(metrics) {
@@ -2036,85 +2250,58 @@ class TopicTyperApp {
       errorCount: metrics.errorCount,
       timestamp: timeStr,
       date: dateStr,
+      mode: this.mode,
+      timeLimit: this.timeLimit,
       samples: metrics.samples || []
     };
 
-    // Save to persistent localStorage
     this.sessionLogs = AnalyticsService.saveSession(logItem);
-    this.updateAnalyticsUI();
-  }
-
-  startWeakKeysDrill() {
-    const drill = AnalyticsService.generateWeakDrill(40);
-    const focusKeysStr = drill.weakKeys.map(k => k.toUpperCase()).join(', ');
-
-    this.currentTopicData = {
-      title: `🎯 Weak Keys Drill [${focusKeysStr}]`,
-      description: `Custom 40-word drill generated to train finger accuracy and muscle memory for keys: ${focusKeysStr}.`
-    };
-
-    this.articleTitle.textContent = this.currentTopicData.title;
-    this.articleDescription.textContent = this.currentTopicData.description;
-    if (this.wikiExternalLink) {
-      this.wikiExternalLink.classList.add('hidden');
-    }
-
-    this.chunks = [drill.wordsText];
-    this.currentChunkIndex = 0;
-    this.renderCurrentChunk();
-
-    this.showBanner(`🎯 Loaded custom 40-word drill targeting keys [${focusKeysStr}]! Focus on accuracy.`);
-    this.focusTypingArea();
-
-    if (this.typingSection) {
-      this.typingSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }
-
-  renderSessionLogs() {
-    if (!this.sessionLogsList) return;
-    if (this.sessionLogCount) {
-      this.sessionLogCount.textContent = `${this.sessionLogs.length} session${this.sessionLogs.length === 1 ? '' : 's'} recorded`;
-    }
-    if (this.sessionLogs.length === 0) {
-      this.sessionLogsList.innerHTML = `
-        <div class="empty-log-state">
-          <span class="empty-icon">📝</span> No practice runs recorded yet. Type a paragraph above to start tracking your progress!
-        </div>
-      `;
-      return;
-    }
-
-    this.sessionLogsList.innerHTML = '';
-    this.sessionLogs.forEach((log) => {
-      const row = document.createElement('div');
-      row.className = 'session-log-row';
-      row.innerHTML = `
-        <div class="log-meta">
-          <span class="log-topic-name">${log.topic}</span>
-          <span class="log-chunk-badge">Part ${log.chunkIndex} of ${log.totalChunks}</span>
-          <span class="log-timestamp">${log.timestamp}</span>
-        </div>
-        <div class="log-stats">
-          <span class="log-stat-wpm">${log.wpm} <span class="stat-unit-tiny">WPM</span></span>
-          <span class="log-stat-acc">${log.accuracy}% <span class="stat-unit-tiny">Accuracy</span></span>
-        </div>
-      `;
-      this.sessionLogsList.appendChild(row);
-    });
   }
 }
 
-// Expose services on window/globalThis for external or template integration if available
+// ============================================================================
+// 8. ABOUT PAGE CONTROLLER (about.html)
+// ============================================================================
+class AboutPageController {
+  constructor() {
+    const aboutBtn = document.querySelector('.nav-btn-about');
+    if (aboutBtn) {
+      aboutBtn.classList.add('active');
+    }
+  }
+}
+
+// Backwards compatibility alias
+class TopicTyperApp extends PracticePageController {}
+
+// Expose services on window/globalThis
 if (typeof window !== 'undefined') {
   window.TextSanitizer = TextSanitizer;
   window.WikipediaService = WikipediaService;
   window.SoundService = SoundService;
   window.AnalyticsService = AnalyticsService;
   window.TypingEngine = TypingEngine;
+  window.HeaderController = HeaderController;
+  window.HomePageController = HomePageController;
+  window.PracticePageController = PracticePageController;
+  window.AboutPageController = AboutPageController;
+  window.TopicTyperApp = TopicTyperApp;
 }
 
-// Initialize on DOM ready
+// Universal DOM router
 document.addEventListener('DOMContentLoaded', () => {
-  window.topicTyperApp = new TopicTyperApp();
+  window.headerController = new HeaderController();
+
+  if (document.getElementById('home-setup-dashboard')) {
+    window.homeApp = new HomePageController();
+  }
+
+  if (document.getElementById('practice-arena') || document.getElementById('typing-section')) {
+    window.practiceApp = new PracticePageController();
+    window.topicTyperApp = window.practiceApp;
+  }
+
+  if (document.getElementById('about-shell')) {
+    window.aboutApp = new AboutPageController();
+  }
 });

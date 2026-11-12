@@ -13,393 +13,296 @@
 <body>
   <!-- Full-Screen App Shell -->
   <div class="app-container">
-    <!-- Top Header -->
+    <!-- Top Header with Merged Search -->
     <header class="app-header">
-      <div class="header-brand">
-        <img src="logo.png" alt="TopicTyper Logo" class="brand-logo" />
-        <div class="brand-text">
-          <h1 class="brand-title">TopicTyper</h1>
-          <span class="brand-subtitle">Learn While You Type</span>
-        </div>
+      <div class="header-brand-group">
+        <a href="index.html" class="header-brand" title="TopicTyper Home">
+          <img src="logo.png" alt="TopicTyper Logo" class="brand-logo" />
+          <div class="brand-text">
+            <h1 class="brand-title">TopicTyper</h1>
+            <span class="brand-subtitle">Learn While You Type</span>
+          </div>
+        </a>
       </div>
+
+      <!-- Unified Header Search Bar (Clutter-free, no suggestion chips row) -->
+      <form id="header-search-form" class="header-search-bar" role="search" autocomplete="off">
+        <span class="search-icon" aria-hidden="true">🔍</span>
+        <input 
+          type="text" 
+          id="header-search-input" 
+          class="header-search-input" 
+          placeholder="Search any topic (e.g., Quantum Computing, Astrophysics, History)..." 
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button type="submit" id="header-search-btn" class="header-search-btn" title="Search topic">
+          Search
+        </button>
+        <button type="button" id="header-random-btn" class="header-random-btn" title="Surprise Me with a random topic">
+          🎲 Random
+        </button>
+      </form>
 
       <div class="header-actions">
         <button type="button" id="sound-toggle-btn" class="header-btn" title="Toggle Typing Sounds" aria-label="Toggle typing sound">
           <span class="btn-icon">🔊</span>
           <span class="btn-label">Sound: On</span>
         </button>
-        <button type="button" id="history-toggle-btn" class="header-btn" title="View Practice History">
-          <span class="btn-icon">📊</span>
-          <span class="btn-label">History</span>
-        </button>
-        <div class="header-clock" title="Session Timer">
+        <a href="about.html" class="header-btn nav-btn-about" title="About TopicTyper & Naga Research Lab">
+          <span>About</span>
+        </a>
+        <div class="header-clock" title="Session Clock">
           <span class="clock-icon">⏱</span>
           <span id="hud-clock">00:00:00</span>
         </div>
       </div>
     </header>
 
-    <!-- Sleek Compact Search & Topic Discovery Bar -->
-    <section class="topic-discovery-section" aria-label="Search and choose topics">
-      <div class="search-compact-card">
-        <form id="topic-form" class="search-form" autocomplete="off">
-          <div class="search-input-group">
-            <span class="search-icon" aria-hidden="true">🔍</span>
+    <!-- Home Page Hero & Setup Dashboard -->
+    <main id="home-setup-dashboard" class="setup-hero">
+      <div class="hero-badge">Curated Interactive Practice</div>
+      <h2 class="hero-title">Master Typing. Learn the Universe.</h2>
+      <p class="hero-subtitle">
+        Pick an encyclopedic topic, select your challenge mode, and absorb real knowledge while sharpening speed and muscle memory.
+      </p>
+
+      <div class="setup-card">
+        <!-- Step 1: Select Mode -->
+        <div class="setup-step">
+          <div class="step-header">
+            <span class="step-number">1</span>
+            <h3 class="step-title">Choose Your Practice Mode</h3>
+            <span class="step-desc">Pick how you want to challenge yourself</span>
+          </div>
+
+          <div class="mode-selector-grid">
+            <div class="mode-card selected" data-mode="paragraph" id="mode-card-paragraph">
+              <div class="mode-card-top">
+                <span class="mode-icon">📖</span>
+                <span class="mode-radio"></span>
+              </div>
+              <div class="mode-title">Complete Paragraph Mode</div>
+              <div class="mode-desc">Read and type full curated article chunks at your own pace without a ticking timer. Perfect for deep focus and reading comprehension.</div>
+            </div>
+
+            <div class="mode-card" data-mode="timed" id="mode-card-timed">
+              <div class="mode-card-top">
+                <span class="mode-icon">⏱️</span>
+                <span class="mode-radio"></span>
+              </div>
+              <div class="mode-title">Timed Speed Sprint</div>
+              <div class="mode-desc">Sprint against the clock in 15s, 30s, 60s, or 120s bursts. Smart idle detection pauses timer if you stop typing.</div>
+            </div>
+          </div>
+
+          <!-- Timed Mode Duration Selector (revealed when timed mode is selected) -->
+          <div id="timed-duration-selector" class="timed-duration-selector hidden">
+            <span class="duration-label">Sprint Duration:</span>
+            <div class="duration-pills">
+              <button type="button" class="duration-pill" data-duration="15">15s</button>
+              <button type="button" class="duration-pill" data-duration="30">30s</button>
+              <button type="button" class="duration-pill selected" data-duration="60">60s</button>
+              <button type="button" class="duration-pill" data-duration="120">120s</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Choose Topic -->
+        <div class="setup-step">
+          <div class="step-header">
+            <span class="step-number">2</span>
+            <h3 class="step-title">Select a Curated Topic or Enter Custom</h3>
+            <span class="step-desc">Or search anything above to explore Wikipedia directly</span>
+          </div>
+
+          <div class="topic-cards-grid" id="curated-topic-grid">
+            <div class="topic-card" data-topic="James Webb Space Telescope">
+              <span class="topic-card-icon">🌌</span>
+              <span class="topic-card-title">James Webb Telescope</span>
+              <span class="topic-card-desc">Deep space astronomy &amp; early galaxies</span>
+            </div>
+
+            <div class="topic-card selected" data-topic="Quantum Mechanics">
+              <span class="topic-card-icon">⚛️</span>
+              <span class="topic-card-title">Quantum Mechanics</span>
+              <span class="topic-card-desc">Subatomic particles, wave-particle duality</span>
+            </div>
+
+            <div class="topic-card" data-topic="Artificial Intelligence">
+              <span class="topic-card-icon">🤖</span>
+              <span class="topic-card-title">Artificial Intelligence</span>
+              <span class="topic-card-desc">Machine learning, neural networks &amp; computation</span>
+            </div>
+
+            <div class="topic-card" data-topic="Ancient Rome">
+              <span class="topic-card-icon">🏛️</span>
+              <span class="topic-card-title">Ancient Rome</span>
+              <span class="topic-card-desc">Republic, empire, architecture &amp; classical law</span>
+            </div>
+
+            <div class="topic-card" data-topic="Biodiversity">
+              <span class="topic-card-icon">🌿</span>
+              <span class="topic-card-title">Biodiversity</span>
+              <span class="topic-card-desc">Ecosystem dynamics, evolutionary biology &amp; earth</span>
+            </div>
+
+            <div class="topic-card" data-topic="Cognitive Science">
+              <span class="topic-card-icon">🧠</span>
+              <span class="topic-card-title">Cognitive Science</span>
+              <span class="topic-card-desc">Mind, memory, psychology &amp; human perception</span>
+            </div>
+
+            <div class="topic-card" data-topic="Renaissance">
+              <span class="topic-card-icon">🎨</span>
+              <span class="topic-card-title">Renaissance Art</span>
+              <span class="topic-card-desc">European cultural rebirth, polymaths &amp; optics</span>
+            </div>
+
+            <div class="topic-card" data-topic="random">
+              <span class="topic-card-icon">🎲</span>
+              <span class="topic-card-title">Surprise Me (Random)</span>
+              <span class="topic-card-desc">Discover unexpected encyclopedic knowledge</span>
+            </div>
+          </div>
+
+          <div class="custom-topic-box">
+            <span class="search-icon" aria-hidden="true">✏️</span>
             <input 
               type="text" 
-              id="topic-input" 
-              class="search-input" 
-              placeholder="Search any topic (e.g., Quantum Computing, Astrophysics, History)..." 
+              id="custom-topic-input" 
+              class="custom-topic-input" 
+              placeholder="Or type a specific topic name (e.g., Black Holes, Solar System, Neuroscience)..." 
               autocomplete="off"
               spellcheck="false"
-              value=""
             />
-            <div class="search-actions">
-              <button type="submit" id="search-submit-btn" class="btn btn-primary" title="Search topic">
-                <span>Search</span>
-              </button>
-              <button type="button" id="random-topic-btn" class="btn btn-secondary" title="Pick a random topic">
-                <span>🎲 Surprise Me (Random)</span>
-              </button>
-            </div>
           </div>
-        </form>
-
-        <!-- Sleek Horizontal Topic Chips -->
-        <div class="topic-chips-bar">
-          <span class="chips-label">Popular topics:</span>
-          <div class="quick-tags" id="quick-tags-container">
-            <!-- Dynamically populated via app.js -->
-            <button type="button" class="quick-tag-btn" data-topic="Astrophysics">🔭 Astrophysics</button>
-            <button type="button" class="quick-tag-btn" data-topic="Quantum Computing">⚡ Quantum Computing</button>
-            <button type="button" class="quick-tag-btn" data-topic="Artificial Intelligence">🤖 Artificial Intelligence</button>
-            <button type="button" class="quick-tag-btn" data-topic="History">📜 History</button>
-            <button type="button" class="quick-tag-btn" data-topic="Neuroscience">🧠 Neuroscience</button>
-            <button type="button" class="quick-tag-btn" data-topic="Ancient Rome">🏛️ Ancient Rome</button>
-            <button type="button" class="quick-tag-btn" data-topic="Dinosaurs">🦖 Dinosaurs</button>
-          </div>
-          <button type="button" id="shuffle-preset-link" class="chip-shuffle-btn" title="More Topics">
-            🔀 More Topics
-          </button>
         </div>
 
-        <!-- Notification / Status Banner -->
-        <div id="status-banner" class="status-banner hidden" role="status" aria-live="polite">
-          <span class="banner-spinner hidden" id="banner-spinner"></span>
-          <span id="banner-message" class="banner-message"></span>
+        <!-- Step 3: Start Practice CTA -->
+        <div class="start-cta-row">
+          <a href="practice.html" id="start-practice-btn" class="btn btn-primary btn-hero">
+            <span>Start Practice Arena ➔</span>
+          </a>
         </div>
       </div>
-    </section>
+    </main>
 
-    <!-- Balanced 2-Column Responsive Workspace Grid -->
-    <div class="workspace-grid">
-      <!-- LEFT COLUMN: Topic Info + Live Telemetry Stats -->
-      <aside class="workspace-sidebar">
-        <!-- Topic Overview Card -->
-        <div class="sidebar-card article-info-card">
-          <div class="card-top-row">
-            <span class="section-tag">Current Topic</span>
-            <a id="wiki-external-link" href="#" target="_blank" rel="noopener noreferrer" class="wiki-link" title="Read full article on Wikipedia">
-              <span>Read on Wikipedia</span> ↗
-            </a>
-          </div>
-
-          <h2 id="article-title" class="article-title">Loading topic...</h2>
-          <p id="article-description" class="article-description">Summary excerpt from Wikipedia</p>
-
-          <div class="chunk-nav-bar">
-            <div class="chunk-pills">
-              <span class="pill pill-primary" id="chunk-counter">Paragraph 1 of 1</span>
-              <span class="pill pill-muted" id="chunk-word-count">0 words</span>
-            </div>
-            <div class="chunk-buttons">
-              <button type="button" id="prev-chunk-btn" class="btn-sm btn-outline" title="Previous Paragraph (Left Arrow)">◀ Prev</button>
-              <button type="button" id="next-chunk-btn" class="btn-sm btn-outline" title="Next Paragraph (Right Arrow)">Next ▶</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Live Stats Card -->
-        <div class="sidebar-card live-stats-card" aria-label="Live Typing Stats">
-          <div class="card-top-row">
-            <span class="section-tag">Live Telemetry</span>
-            <span class="live-indicator"><span class="pulse-dot"></span> Active</span>
-          </div>
-
-          <div class="stats-grid">
-            <div class="stat-box stat-speed">
-              <span class="stat-label">Speed</span>
-              <div class="stat-value-wrap">
-                <span class="stat-number" id="stat-wpm">0</span>
-                <span class="stat-unit">WPM</span>
-              </div>
-            </div>
-
-            <div class="stat-box stat-accuracy">
-              <span class="stat-label">Accuracy</span>
-              <div class="stat-value-wrap">
-                <span class="stat-number" id="stat-accuracy">100%</span>
-              </div>
-            </div>
-
-            <div class="stat-box stat-time">
-              <span class="stat-label">Time</span>
-              <div class="stat-value-wrap">
-                <span class="stat-number" id="stat-time">00:00</span>
-              </div>
-            </div>
-
-            <div class="stat-box stat-progress">
-              <div class="stat-label-row">
-                <span class="stat-label">Progress</span>
-                <span class="stat-sublabel" id="progress-percent">0%</span>
-              </div>
-              <div class="stat-value-wrap">
-                <span class="stat-number-sm" id="stat-progress-text">0 / 0</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Progress Bar Track -->
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-track">
-              <div id="progress-bar-fill" class="progress-bar-fill"></div>
-            </div>
-            <div class="progress-status-row">
-              <span class="progress-status-badge" id="stream-status-badge">Ready to type</span>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <!-- RIGHT COLUMN: Spacious Typing Arena -->
-      <main class="workspace-main" aria-label="Typing Arena">
-        <div class="typing-card">
-          <!-- Main typing section without nested borders -->
-          <div class="typing-section" id="typing-section">
-            <!-- Hidden input to capture keystrokes on desktop & mobile keyboards -->
-            <input 
-              type="text" 
-              id="hidden-input" 
-              class="hidden-input" 
-              autocomplete="off" 
-              autocorrect="off" 
-              autocapitalize="off" 
-              spellcheck="false" 
-              tabindex="0"
-              aria-label="Typing input field"
-            />
-
-            <!-- Words container with smooth cursor -->
-            <div id="words-container" class="words-container">
-              <div id="caret" class="caret"></div>
-              <!-- Target words and characters populated via app.js -->
-            </div>
-
-            <!-- Focus Reminder Banner (unblurred text underneath) -->
-            <div id="focus-overlay" class="focus-overlay">
-              <div class="focus-prompt">
-                <span class="focus-icon">⌨️</span> Click here or start typing to begin
-              </div>
-            </div>
-          </div>
-
-          <!-- Typing Card Bottom Action Bar -->
-          <div class="typing-card-footer">
-            <div class="action-buttons">
-              <button type="button" id="restart-chunk-btn" class="btn btn-outline" title="Restart current paragraph [Esc]">
-                <span>↺ Restart [Esc]</span>
-              </button>
-              <button type="button" id="skip-chunk-btn" class="btn btn-primary" title="Advance to next paragraph [Tab]">
-                <span>Next Paragraph [Tab] ➔</span>
-              </button>
-            </div>
-
-            <div class="keyboard-hints">
-              <span class="hint-pill"><kbd class="kbd">/</kbd> Search</span>
-              <span class="hint-pill"><kbd class="kbd">Tab</kbd> Next</span>
-              <span class="hint-pill"><kbd class="kbd">Esc</kbd> Restart</span>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-
-    <!-- Practice History & Performance Analytics Section -->
-    <section class="analytics-section" id="card-session-logs" aria-label="Practice history and typing analytics">
+    <!-- Performance Analytics & Practice History -->
+    <section class="analytics-section" aria-label="Typing Performance Analytics">
       <div class="analytics-grid">
-        <!-- Card 1: WPM Progression Trend Chart -->
+        <!-- Chart Card -->
         <div class="analytics-card chart-card">
           <div class="card-header-row">
             <div class="card-title-group">
-              <span class="card-category-tag">Performance Analytics</span>
-              <h3 class="analytics-card-title">Speed Progression Trend</h3>
+              <span class="card-category-tag">Performance Telemetry</span>
+              <h3 class="analytics-card-title">Speed Progress (WPM)</h3>
             </div>
             <div class="chart-legend">
-              <span class="legend-item"><span class="legend-dot color-sky"></span> Session WPM</span>
-              <span class="legend-item"><span class="legend-line color-emerald"></span> Moving Avg (3)</span>
-            </div>
-          </div>
-          <p class="analytics-card-desc">Session-over-session speed trend across your last 15 completed paragraphs.</p>
-          <div class="chart-canvas-container" id="wpm-trend-container">
-            <canvas id="wpm-trend-canvas" width="600" height="200"></canvas>
-            <div id="chart-tooltip" class="chart-tooltip hidden"></div>
-            <div id="chart-empty-state" class="chart-empty-state">
-              <span class="empty-icon">📈</span>
-              <span>Complete a paragraph above to start charting your speed progression!</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Card 2: Weak Keys & Focus Areas -->
-        <div class="analytics-card weak-keys-card">
-          <div class="card-header-row">
-            <div class="card-title-group">
-              <span class="card-category-tag">Finger Ergonomics</span>
-              <h3 class="analytics-card-title">Weak Keys &amp; Focus Areas</h3>
-            </div>
-            <button type="button" id="practice-weak-keys-btn" class="btn btn-primary btn-sm-action" title="Generate a 40-word drill targeting your weak keys">
-              <span>🎯 Practice Weak Keys</span>
-            </button>
-          </div>
-          
-          <div class="weak-keys-content">
-            <div class="weak-keys-summary">
-              <span class="summary-label">Top Attention Keys:</span>
-              <div id="top-weak-keys-list" class="top-weak-keys-list">
-                <!-- Dynamically populated: ranked keys with error rate % -->
-              </div>
-            </div>
-
-            <!-- QWERTY Heatmap -->
-            <div class="heatmap-section">
-              <div class="heatmap-header">
-                <span class="heatmap-title">Keyboard Accuracy Heatmap</span>
-                <div class="heatmap-legend">
-                  <span class="heat-legend-pill heat-good">&lt;5% err</span>
-                  <span class="heat-legend-pill heat-warn">5–15% err</span>
-                  <span class="heat-legend-pill heat-bad">&gt;15% err</span>
-                  <span class="heat-legend-pill heat-untested">Untested</span>
-                </div>
-              </div>
-              <div id="keyboard-heatmap" class="keyboard-heatmap" aria-label="QWERTY accuracy heatmap">
-                <!-- Dynamically generated rows of mini-keys -->
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Card 3: Session Journal -->
-        <div class="analytics-card session-history-card">
-          <div class="card-header-row">
-            <div class="card-title-group">
-              <span class="card-category-tag">Session Journal</span>
-              <h3 class="analytics-card-title">Practice Log</h3>
-            </div>
-            <div class="journal-header-actions">
-              <span class="history-badge" id="session-log-count">0 sessions recorded</span>
-              <button type="button" id="clear-logs-btn" class="clear-btn" title="Clear practice history and stats">Clear History</button>
-            </div>
-          </div>
-
-          <div id="session-logs-list" class="session-logs-list">
-            <div class="empty-log-state">
-              <span class="empty-icon">📝</span> No practice runs recorded yet. Type a paragraph above to start tracking your progress!
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Results Modal Overlay -->
-    <div id="results-modal" class="results-modal hidden" role="dialog" aria-modal="true" aria-labelledby="results-title">
-      <div class="modal-backdrop" id="modal-backdrop"></div>
-      <div class="modal-card" id="modal-card">
-        <div class="modal-header">
-          <span class="modal-celebration-badge">🎉 Great Job!</span>
-          <h2 id="results-title" class="modal-title">Paragraph Completed!</h2>
-        </div>
-
-        <div class="modal-stats-grid">
-          <div class="modal-stat-box highlight-emerald">
-            <span class="box-label">Speed</span>
-            <div class="box-val-row">
-              <span class="box-value" id="res-wpm">0</span>
-              <span class="box-unit">WPM</span>
-            </div>
-          </div>
-          <div class="modal-stat-box highlight-blue">
-            <span class="box-label">Accuracy</span>
-            <div class="box-val-row">
-              <span class="box-value" id="res-accuracy">100%</span>
-            </div>
-          </div>
-          <div class="modal-stat-box highlight-amber">
-            <span class="box-label">Time</span>
-            <div class="box-val-row">
-              <span class="box-value" id="res-time">00:00</span>
-            </div>
-          </div>
-          <div class="modal-stat-box">
-            <span class="box-label">Raw Speed</span>
-            <div class="box-val-row">
-              <span class="box-value" id="res-raw-wpm">0</span>
-              <span class="box-unit">WPM</span>
-            </div>
-          </div>
-          <div class="modal-stat-box highlight-coral">
-            <span class="box-label">Errors</span>
-            <div class="box-val-row">
-              <span class="box-value" id="res-errors">0</span>
-            </div>
-          </div>
-          <div class="modal-stat-box">
-            <span class="box-label">Characters</span>
-            <div class="box-val-row">
-              <span class="box-value" id="res-chars">0 / 0</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mini Trend Chart on Completion Modal -->
-        <div class="modal-chart-section">
-          <div class="modal-chart-header">
-            <span class="modal-chart-title">WPM Progress Trend</span>
-            <div class="chart-legend-modal">
               <span class="legend-item"><span class="legend-dot color-sky"></span> Session WPM</span>
               <span class="legend-item"><span class="legend-line color-emerald"></span> Moving Avg</span>
             </div>
           </div>
-          <div class="modal-chart-container" id="modal-wpm-container">
-            <canvas id="modal-wpm-canvas" width="560" height="150"></canvas>
-            <div id="modal-chart-tooltip" class="chart-tooltip hidden"></div>
+          <p class="analytics-card-desc">Session-over-session typing speed trend across your recent completed articles.</p>
+          <div class="chart-container" id="wpm-chart-container">
+            <canvas id="wpm-trend-canvas" width="680" height="220"></canvas>
+            <div id="chart-tooltip" class="chart-tooltip hidden"></div>
+            <div id="chart-empty-state" class="chart-empty-state hidden">
+              <span class="empty-icon">📈</span>
+              <p>No practice sessions recorded yet. Start practicing above to visualize your speed curve!</p>
+            </div>
           </div>
         </div>
 
-        <div class="modal-actions">
-          <button type="button" id="modal-next-btn" class="btn btn-primary btn-lg" tabindex="0">
-            <span>Next Paragraph [Enter / Space] ↵</span>
-          </button>
-          <button type="button" id="modal-retry-btn" class="btn btn-secondary btn-lg" tabindex="0">
-            <span>Practice Again [Esc]</span>
-          </button>
-          <a id="modal-wiki-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-lg" tabindex="0">
-            <span>Read on Wikipedia ↗</span>
-          </a>
+        <!-- Weak Keys & Heatmap Card -->
+        <div class="analytics-card weak-keys-card">
+          <div class="card-header-row">
+            <div class="card-title-group">
+              <span class="card-category-tag">Accuracy Intelligence</span>
+              <h3 class="analytics-card-title">Weak Keys &amp; Heatmap</h3>
+            </div>
+            <button type="button" id="practice-weak-keys-btn" class="btn btn-secondary btn-sm" title="Generate custom drill targeting missed letters">
+              <span>🎯 Practice Weak Keys</span>
+            </button>
+          </div>
+          <p class="analytics-card-desc">Live accuracy heatmap across keys. Letters with high error rates are highlighted in coral.</p>
+
+          <div class="weak-keys-content">
+            <div class="weak-keys-summary">
+              <span class="summary-label">Top Attention Areas:</span>
+              <div id="top-weak-keys-list" class="top-weak-keys-list">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- Visual QWERTY Mini Heatmap -->
+            <div id="keyboard-heatmap" class="keyboard-heatmap" aria-label="Keyboard accuracy heatmap">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Session History Journal -->
+        <div class="analytics-card session-history-card" id="card-session-logs">
+          <div class="card-header-row">
+            <div class="card-title-group">
+              <span class="card-category-tag">Practice Journal</span>
+              <h3 class="analytics-card-title">Recent Sessions</h3>
+            </div>
+            <div class="history-actions">
+              <span id="session-log-count" class="session-log-count">0 sessions recorded</span>
+              <button type="button" id="clear-logs-btn" class="btn btn-secondary btn-sm" title="Clear all local session records">
+                <span>Reset History</span>
+              </button>
+            </div>
+          </div>
+          <div id="session-logs-list" class="session-logs-list">
+            <!-- Dynamically populated -->
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
     <!-- Naga Research Lab Footer -->
     <footer class="app-footer">
-      <div class="footer-primary">
+      <div class="footer-brand-meta">
+        <a href="index.html" class="footer-logo-link" title="TopicTyper Home">
+          <img src="logo.png" alt="TopicTyper Logo" class="footer-logo" />
+          <span class="footer-brand-title">TopicTyper</span>
+        </a>
+        <span class="footer-divider">•</span>
         <p class="footer-attribution">
-          <strong>TopicTyper</strong> — An open-learning typing &amp; reading experiment. Built by <strong>Naga Research Lab</strong>.
+          An open-learning typing &amp; reading experiment. Built by <strong>Naga Research Lab</strong>.
         </p>
+        <a href="about.html" class="footer-about-pill" title="Read about TopicTyper and Naga Research Lab">About ↗</a>
       </div>
+
+      <div class="footer-social-links">
+        <a href="https://github.com/NAGA-RESEARCH" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="Naga Research Lab on GitHub">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+          <span class="social-text">GitHub</span>
+        </a>
+
+        <a href="https://youtube.com/@AK_Bisariya" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="AK Bisariya on YouTube">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+          </svg>
+          <span class="social-text">YouTube</span>
+        </a>
+
+        <a href="https://x.com/AK_Bisariya" target="_blank" rel="noopener noreferrer" class="social-icon-btn" title="AK Bisariya on X (Twitter)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+          <span class="social-text">X</span>
+        </a>
+      </div>
+
       <div class="footer-shortcuts">
         <span class="shortcut-badge"><kbd class="kbd">/</kbd> Search</span>
-        <span class="shortcut-badge"><kbd class="kbd">Tab</kbd> Next Paragraph</span>
+        <span class="shortcut-badge"><kbd class="kbd">Tab</kbd> Next</span>
         <span class="shortcut-badge"><kbd class="kbd">Esc</kbd> Restart</span>
       </div>
     </footer>
