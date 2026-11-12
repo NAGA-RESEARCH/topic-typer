@@ -395,7 +395,585 @@ const SoundService = {
 };
 
 // ============================================================================
-// 4. TYPING ENGINE (REFACTORED WITH PRECISION CARET TRACKING)
+// 4. INTELLIGENT TYPING ANALYTICS & WEAK KEYS DETECTOR
+// ============================================================================
+const AnalyticsService = {
+  SESSIONS_KEY: 'topictyper_sessions',
+  KEYSTATS_KEY: 'topictyper_keystats',
+
+  // Safe localStorage helper
+  getStorage(key) {
+    try {
+      const data = localStorage.getItem(key);
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  setStorage(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      // Storage quota or private browsing restriction
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // Sessions Management
+  // --------------------------------------------------------------------------
+  getSessions() {
+    const sessions = this.getStorage(this.SESSIONS_KEY);
+    return Array.isArray(sessions) ? sessions : [];
+  },
+
+  saveSession(sessionData) {
+    const sessions = this.getSessions();
+    sessions.unshift(sessionData);
+    if (sessions.length > 50) {
+      sessions.length = 50;
+    }
+    this.setStorage(this.SESSIONS_KEY, sessions);
+    return sessions;
+  },
+
+  clearSessions() {
+    try {
+      localStorage.removeItem(this.SESSIONS_KEY);
+    } catch (e) {}
+  },
+
+  // --------------------------------------------------------------------------
+  // Keystroke Accuracy Tracking
+  // --------------------------------------------------------------------------
+  getKeyStats() {
+    let stats = this.getStorage(this.KEYSTATS_KEY);
+    if (!stats || typeof stats !== 'object') {
+      stats = {};
+    }
+    const letters = 'abcdefghijklmnopqrstuvwxyz'.split('');
+    letters.push(' ');
+    letters.forEach(char => {
+      if (!stats[char]) {
+        stats[char] = { attempts: 0, errors: 0 };
+      }
+    });
+    return stats;
+  },
+
+  recordKey(rawChar, isCorrect) {
+    if (!rawChar) return;
+    const char = (rawChar === ' ') ? ' ' : rawChar.toLowerCase();
+    // Only track alphabet keys and spacebar
+    if (!/^[a-z ]$/.test(char)) return;
+
+    const stats = this.getKeyStats();
+    if (!stats[char]) {
+      stats[char] = { attempts: 0, errors: 0 };
+    }
+    stats[char].attempts = (stats[char].attempts || 0) + 1;
+    if (!isCorrect) {
+      stats[char].errors = (stats[char].errors || 0) + 1;
+    }
+    this.setStorage(this.KEYSTATS_KEY, stats);
+  },
+
+  clearKeyStats() {
+    try {
+      localStorage.removeItem(this.KEYSTATS_KEY);
+    } catch (e) {}
+  },
+
+  getWeakKeys(limit = 5) {
+    const stats = this.getKeyStats();
+    const evaluated = [];
+
+    for (const [key, data] of Object.entries(stats)) {
+      if (data.attempts > 0) {
+        const errorRate = (data.errors / data.attempts) * 100;
+        const accuracy = 100 - errorRate;
+        evaluated.push({
+          key,
+          attempts: data.attempts,
+          errors: data.errors,
+          errorRate: Math.round(errorRate * 10) / 10,
+          accuracy: Math.round(accuracy * 10) / 10
+        });
+      }
+    }
+
+    if (evaluated.length === 0) {
+      return [];
+    }
+
+    // Sort: keys with errors first (highest error rate, then error count), then lowest accuracy
+    evaluated.sort((a, b) => {
+      if (a.errors > 0 && b.errors === 0) return -1;
+      if (b.errors > 0 && a.errors === 0) return 1;
+      if (b.errorRate !== a.errorRate) return b.errorRate - a.errorRate;
+      if (b.errors !== a.errors) return b.errors - a.errors;
+      return b.attempts - a.attempts;
+    });
+
+    return evaluated.slice(0, limit).map(item => {
+      let colorClass = 'emerald';
+      if (item.errorRate > 15) {
+        colorClass = 'coral';
+      } else if (item.errorRate >= 5) {
+        colorClass = 'amber';
+      }
+      return {
+        ...item,
+        colorClass,
+        displayKey: item.key === ' ' ? 'SPACE' : item.key.toUpperCase()
+      };
+    });
+  },
+
+  // --------------------------------------------------------------------------
+  // Custom 40-Word Weak Keys Drill Generator
+  // --------------------------------------------------------------------------
+  generateWeakDrill(targetWordCount = 40) {
+    const topWeak = this.getWeakKeys(5);
+    let targetLetters = [];
+
+    if (topWeak.length > 0 && topWeak.some(k => k.errors > 0)) {
+      targetLetters = topWeak.filter(k => k.key !== ' ' && k.errors > 0).map(k => k.key);
+    }
+
+    // If fewer than 3 target letters, add common agility/finger-coordination letters
+    const defaultAgilityLetters = ['p', 'b', 'q', 'z', 'x', 'v', 'k', 'j'];
+    for (const letter of defaultAgilityLetters) {
+      if (targetLetters.length >= 4) break;
+      if (!targetLetters.includes(letter)) {
+        targetLetters.push(letter);
+      }
+    }
+
+    // Curated rich vocabulary of engaging English words
+    const dictionary = [
+      'quantum', 'puzzle', 'breeze', 'galaxy', 'explore', 'oxygen', 'matrix', 'zenith',
+      'sphinx', 'crystal', 'hazard', 'velvet', 'balance', 'dynamic', 'vortex', 'quartz',
+      'subtle', 'symbol', 'copper', 'liquid', 'knight', 'trophy', 'memory', 'binary',
+      'beacon', 'anchor', 'sphere', 'mystic', 'frozen', 'canyon', 'silver', 'cosmic',
+      'jungle', 'dragon', 'mirror', 'horizon', 'shield', 'voyage', 'summit', 'kernel',
+      'temple', 'orbit', 'spark', 'weapon', 'cipher', 'stream', 'rocket', 'vector',
+      'forest', 'marble', 'island', 'falcon', 'engine', 'plasma', 'shadow', 'planet',
+      'system', 'wisdom', 'energy', 'bridge', 'method', 'nature', 'public', 'aspect',
+      'packet', 'bypass', 'zebra', 'plaza', 'boxing', 'problem', 'project', 'syntax',
+      'sample', 'complex', 'expert', 'prefix', 'blaze', 'bronze', 'pixel', 'flight',
+      'impact', 'volume', 'fabric', 'vibrant', 'quick', 'yellow', 'brave', 'climb',
+      'depth', 'flame', 'globe', 'heavy', 'ivory', 'jewel', 'kneel', 'lemon', 'magic',
+      'noble', 'ocean', 'pride', 'quest', 'river', 'stone', 'tiger', 'unity', 'valor',
+      'wheel', 'youth', 'zebra', 'amber', 'bloom', 'charm', 'drift', 'eagle', 'frost',
+      'glory', 'haven', 'inlet', 'jolly', 'karma', 'lunar', 'merit', 'nexus', 'oasis',
+      'pulse', 'realm', 'solar', 'track', 'urban', 'vigor', 'wave', 'yield', 'zone'
+    ];
+
+    // Score dictionary words based on presence and count of targetLetters
+    const scoredWords = dictionary.map(word => {
+      let score = 0;
+      for (const char of word) {
+        if (targetLetters.includes(char)) {
+          score += 3;
+        }
+      }
+      return { word, score };
+    });
+
+    // Sort by weak key density
+    scoredWords.sort((a, b) => b.score - a.score || Math.random() - 0.5);
+
+    const chosen = [];
+    let idx = 0;
+    while (chosen.length < targetWordCount) {
+      if (idx < scoredWords.length) {
+        chosen.push(scoredWords[idx].word);
+        idx++;
+      } else {
+        idx = 0;
+        chosen.push(scoredWords[Math.floor(Math.random() * Math.min(25, scoredWords.length))].word);
+      }
+    }
+
+    // Shuffle slightly for natural rhythmic typing
+    const shuffledWords = chosen.sort(() => 0.5 - Math.random());
+
+    return {
+      weakKeys: targetLetters,
+      wordsText: shuffledWords.join(' '),
+      wordCount: targetWordCount
+    };
+  },
+
+  // --------------------------------------------------------------------------
+  // Canvas Chart Renderer (Bezier Curve + Area Gradient + Moving Average)
+  // --------------------------------------------------------------------------
+  renderWpmChart(canvasEl, tooltipEl, sessions, options = {}) {
+    if (!canvasEl) return;
+    const ctx = canvasEl.getContext('2d');
+    if (!ctx) return;
+
+    // Filter to last 15 completed sessions (display in chronological order: oldest -> latest)
+    const recentSessions = [...sessions].reverse().slice(-15);
+    const count = recentSessions.length;
+
+    // High-DPI Canvas scaling
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvasEl.getBoundingClientRect();
+    const width = rect.width || canvasEl.parentElement?.clientWidth || (options.isModal ? 540 : 600);
+    const height = rect.height || (options.isModal ? 130 : 200);
+
+    canvasEl.width = width * dpr;
+    canvasEl.height = height * dpr;
+    ctx.resetTransform?.();
+    ctx.scale(dpr, dpr);
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    if (count === 0) {
+      // Draw subtle placeholder grid
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+      ctx.lineWidth = 1;
+      for (let y = 30; y < height; y += 35) {
+        ctx.beginPath();
+        ctx.moveTo(30, y);
+        ctx.lineTo(width - 20, y);
+        ctx.stroke();
+      }
+      return;
+    }
+
+    // Chart margins
+    const padLeft = options.isModal ? 34 : 44;
+    const padRight = options.isModal ? 16 : 24;
+    const padTop = options.isModal ? 18 : 24;
+    const padBottom = options.isModal ? 26 : 32;
+
+    const plotW = Math.max(10, width - padLeft - padRight);
+    const plotH = Math.max(10, height - padTop - padBottom);
+
+    // Determine scale (min 60 WPM max ceiling for pleasant headroom)
+    const maxDataWpm = Math.max(...recentSessions.map(s => s.wpm || 0), 0);
+    const yMax = Math.max(60, Math.ceil((maxDataWpm * 1.2) / 10) * 10);
+    const yMin = 0;
+
+    const valToY = (val) => padTop + plotH - ((val - yMin) / (yMax - yMin)) * plotH;
+    const idxToX = (i) => {
+      if (count === 1) return padLeft + plotW / 2;
+      return padLeft + (i / (count - 1)) * plotW;
+    };
+
+    // 1. Draw horizontal grid lines & Y-axis labels
+    const gridSteps = options.isModal ? 3 : 4;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.font = '10px Inter, system-ui, sans-serif';
+
+    for (let s = 0; s <= gridSteps; s++) {
+      const stepVal = Math.round(yMin + (s / gridSteps) * (yMax - yMin));
+      const gy = valToY(stepVal);
+
+      // Grid line
+      ctx.strokeStyle = (s === 0) ? 'rgba(148, 163, 184, 0.18)' : 'rgba(148, 163, 184, 0.07)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(padLeft, gy);
+      ctx.lineTo(width - padRight, gy);
+      ctx.stroke();
+
+      // Label
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(`${stepVal}`, padLeft - 6, gy);
+    }
+
+    // 2. Prepare Point coordinates
+    const points = recentSessions.map((s, idx) => ({
+      x: idxToX(idx),
+      y: valToY(s.wpm || 0),
+      session: s,
+      index: idx
+    }));
+
+    // 3. Draw Moving Average Line (3-session MA) in Emerald
+    if (count > 1) {
+      const maPoints = [];
+      for (let i = 0; i < count; i++) {
+        const windowStart = Math.max(0, i - 2);
+        const windowSlice = recentSessions.slice(windowStart, i + 1);
+        const avg = windowSlice.reduce((sum, item) => sum + (item.wpm || 0), 0) / windowSlice.length;
+        maPoints.push({ x: idxToX(i), y: valToY(avg) });
+      }
+
+      ctx.save();
+      ctx.strokeStyle = '#10B981';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(maPoints[0].x, maPoints[0].y);
+      for (let i = 1; i < maPoints.length; i++) {
+        ctx.lineTo(maPoints[i].x, maPoints[i].y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 4. Draw Smooth Cubic Spline Line & Gradient Fill
+    if (count === 1) {
+      // Single point: draw glowing indicator
+      const pt = points[0];
+      const grad = ctx.createRadialGradient(pt.x, pt.y, 4, pt.x, pt.y, 26);
+      grad.addColorStop(0, 'rgba(56, 189, 248, 0.35)');
+      grad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 26, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.save();
+
+      // Path for area fill
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[i === 0 ? i : i - 1];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+      }
+
+      // Close area path for linear gradient
+      const lastPt = points[points.length - 1];
+      const bottomY = padTop + plotH;
+      ctx.lineTo(lastPt.x, bottomY);
+      ctx.lineTo(points[0].x, bottomY);
+      ctx.closePath();
+
+      const areaGrad = ctx.createLinearGradient(0, padTop, 0, bottomY);
+      areaGrad.addColorStop(0, 'rgba(56, 189, 248, 0.30)');
+      areaGrad.addColorStop(1, 'rgba(56, 189, 248, 0.01)');
+      ctx.fillStyle = areaGrad;
+      ctx.fill();
+
+      // Re-trace stroke
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[i === 0 ? i : i - 1];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+      }
+      ctx.strokeStyle = '#38BDF8';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 5. Draw data points & X-axis session labels
+    const hoveredIdx = canvasEl._hoveredPointIndex ?? -1;
+
+    points.forEach((pt, i) => {
+      const isHovered = (i === hoveredIdx);
+
+      // X-Axis labels
+      if (!options.isModal || i === 0 || i === count - 1 || count <= 6) {
+        ctx.fillStyle = isHovered ? '#38BDF8' : '#64748b';
+        ctx.font = '9px JetBrains Mono, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`#${i + 1}`, pt.x, padTop + plotH + 7);
+      }
+
+      // Outer glow on hovered point
+      if (isHovered) {
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.28)';
+        ctx.fill();
+      }
+
+      // Point circle
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, isHovered ? 5 : 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#0B1120';
+      ctx.fill();
+      ctx.lineWidth = isHovered ? 2.5 : 2;
+      ctx.strokeStyle = '#38BDF8';
+      ctx.stroke();
+    });
+
+    // 6. Interactive Tooltip & Hover Tracking
+    if (!canvasEl._hasChartListeners && tooltipEl) {
+      canvasEl._hasChartListeners = true;
+
+      const handleMove = (e) => {
+        const cRect = canvasEl.getBoundingClientRect();
+        const mouseX = e.clientX - cRect.left;
+        const mouseY = e.clientY - cRect.top;
+
+        const currentPoints = canvasEl._points || [];
+        let closest = null;
+        let closestDist = Infinity;
+
+        currentPoints.forEach((pt) => {
+          const dx = pt.x - mouseX;
+          const dy = pt.y - mouseY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < closestDist && Math.abs(dx) < 32) {
+            closestDist = dist;
+            closest = pt;
+          }
+        });
+
+        if (closest && closestDist < 40) {
+          if (canvasEl._hoveredPointIndex !== closest.index) {
+            canvasEl._hoveredPointIndex = closest.index;
+            AnalyticsService.renderWpmChart(canvasEl, tooltipEl, sessions, options);
+          }
+
+          const s = closest.session;
+          tooltipEl.innerHTML = `
+            <div class="tip-topic">${s.topic || 'Unknown'}</div>
+            <div class="tip-stats">
+              <span class="tip-wpm"><strong>${s.wpm || 0}</strong> WPM</span>
+              <span class="tip-acc"><strong>${s.accuracy ?? 100}%</strong> Acc</span>
+            </div>
+            <div class="tip-meta">Part ${s.chunkIndex || 1} • ${s.timestamp || ''}</div>
+          `;
+
+          tooltipEl.style.left = `${closest.x}px`;
+          tooltipEl.style.top = `${closest.y - 10}px`;
+          tooltipEl.classList.remove('hidden');
+        } else if (canvasEl._hoveredPointIndex !== -1) {
+          canvasEl._hoveredPointIndex = -1;
+          tooltipEl.classList.add('hidden');
+          AnalyticsService.renderWpmChart(canvasEl, tooltipEl, sessions, options);
+        }
+      };
+
+      const handleLeave = () => {
+        canvasEl._hoveredPointIndex = -1;
+        tooltipEl.classList.add('hidden');
+        AnalyticsService.renderWpmChart(canvasEl, tooltipEl, sessions, options);
+      };
+
+      canvasEl.addEventListener('mousemove', handleMove);
+      canvasEl.addEventListener('mouseleave', handleLeave);
+    }
+
+    // Cache current points for tooltip lookup
+    canvasEl._points = points;
+  },
+
+  // --------------------------------------------------------------------------
+  // Keyboard Heatmap & Weak Keys UI Renderer
+  // --------------------------------------------------------------------------
+  renderHeatmap(containerEl) {
+    if (!containerEl) return;
+    const stats = this.getKeyStats();
+
+    const keyboardRows = [
+      ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+      ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+      ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
+      [' ']
+    ];
+
+    containerEl.innerHTML = '';
+
+    keyboardRows.forEach(row => {
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'heatmap-row';
+
+      row.forEach(key => {
+        const keyEl = document.createElement('div');
+        const keyData = stats[key] || { attempts: 0, errors: 0 };
+        const isSpace = (key === ' ');
+
+        let statusClass = 'heat-untested';
+        let tooltipText = `Key: ${isSpace ? 'SPACE' : key.toUpperCase()} | Untested`;
+
+        if (keyData.attempts > 0) {
+          const errRate = (keyData.errors / keyData.attempts) * 100;
+          const acc = 100 - errRate;
+
+          if (errRate > 15) {
+            statusClass = 'heat-bad';
+          } else if (errRate >= 5) {
+            statusClass = 'heat-warn';
+          } else {
+            statusClass = 'heat-good';
+          }
+
+          tooltipText = `Key: ${isSpace ? 'SPACE' : key.toUpperCase()} | Error Rate: ${errRate.toFixed(1)}% | Accuracy: ${acc.toFixed(1)}% (${keyData.attempts - keyData.errors}/${keyData.attempts})`;
+        }
+
+        keyEl.className = `heat-key ${statusClass} ${isSpace ? 'heat-key-space' : ''}`;
+        keyEl.textContent = isSpace ? 'SPACE' : key.toUpperCase();
+        keyEl.title = tooltipText;
+        keyEl.setAttribute('aria-label', tooltipText);
+
+        rowDiv.appendChild(keyEl);
+      });
+
+      containerEl.appendChild(rowDiv);
+    });
+  },
+
+  renderWeakKeysSummary(containerEl) {
+    if (!containerEl) return;
+    const weakKeys = this.getWeakKeys(5);
+
+    containerEl.innerHTML = '';
+
+    if (weakKeys.length === 0) {
+      containerEl.innerHTML = `<span class="weak-pill-empty">No keys tested yet. Start typing to analyze your accuracy!</span>`;
+      return;
+    }
+
+    const hasErrors = weakKeys.some(k => k.errors > 0);
+    if (!hasErrors) {
+      containerEl.innerHTML = `
+        <span class="weak-pill emerald" title="All typed keys have 100% accuracy so far!">
+          ✨ 100% Accuracy on all ${weakKeys.length} tested keys!
+        </span>
+      `;
+      return;
+    }
+
+    weakKeys.forEach((item, idx) => {
+      const pill = document.createElement('div');
+      pill.className = `weak-pill ${item.colorClass}`;
+      pill.title = `${item.displayKey}: ${item.errorRate}% error rate (${item.errors} errors / ${item.attempts} attempts)`;
+      pill.innerHTML = `
+        <span>#${idx + 1} <strong>${item.displayKey}</strong></span>
+        <span>${item.errorRate}% err</span>
+      `;
+      containerEl.appendChild(pill);
+    });
+  }
+};
+
+// ============================================================================
+// 5. TYPING ENGINE (REFACTORED WITH PRECISION CARET TRACKING & KEY ANALYTICS)
 // ============================================================================
 class TypingEngine {
   constructor(options = {}) {
@@ -413,6 +991,8 @@ class TypingEngine {
     // Metrics State
     this.startTime = null;
     this.timerInterval = null;
+    this.samplerInterval = null;
+    this.instantaneousSamples = [];
     this.totalKeystrokes = 0;
     this.correctKeystrokes = 0;
     this.errorCount = 0;
@@ -451,6 +1031,11 @@ class TypingEngine {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
     }
+    if (this.samplerInterval) {
+      clearInterval(this.samplerInterval);
+      this.samplerInterval = null;
+    }
+    this.instantaneousSamples = [];
     this.startTime = null;
     this.activeCharIndex = 0;
     this.charSpans = [];
@@ -513,7 +1098,26 @@ class TypingEngine {
           this.updateMetrics();
         }
       }, 100);
+
+      // Track instantaneous WPM every 2 seconds during active typing
+      this.samplerInterval = setInterval(() => {
+        if (!this.isCompleted) {
+          this.recordInstantaneousSample();
+        }
+      }, 2000);
     }
+  }
+
+  recordInstantaneousSample() {
+    if (this.isCompleted || !this.startTime) return;
+    const elapsedSeconds = Math.max((performance.now() - this.startTime) / 1000, 0.5);
+    const elapsedMinutes = elapsedSeconds / 60;
+    const correctChars = this.wordsContainer ? this.wordsContainer.querySelectorAll('.char.correct').length : 0;
+    const instWpm = Math.max(0, Math.round((correctChars / 5) / elapsedMinutes));
+    this.instantaneousSamples.push({
+      time: Math.round(elapsedSeconds),
+      wpm: instWpm
+    });
   }
 
   handleKeyDown(e) {
@@ -599,6 +1203,7 @@ class TypingEngine {
         span.className = 'char correct char-space';
       }
       SoundService.playKeyClick(false);
+      AnalyticsService.recordKey(' ', true);
       this.activeCharIndex++;
       this.updateCaretPosition();
       this.updateMetrics();
@@ -619,6 +1224,7 @@ class TypingEngine {
           span.className = isSpace ? 'char incorrect char-space' : 'char incorrect';
         }
         this.errorCount++;
+        AnalyticsService.recordKey(this.targetText[i], false);
       }
       SoundService.playKeyClick(true);
       this.activeCharIndex = nextSpaceIdx + 1;
@@ -652,12 +1258,14 @@ class TypingEngine {
         span.className = isSpace ? 'char correct char-space' : 'char correct';
       }
       SoundService.playKeyClick(false);
+      AnalyticsService.recordKey(targetChar, true);
     } else {
       this.errorCount++;
       if (span) {
         span.className = isSpace ? 'char incorrect char-space' : 'char incorrect';
       }
       SoundService.playKeyClick(true);
+      AnalyticsService.recordKey(targetChar, false);
     }
 
     this.activeCharIndex++;
@@ -743,7 +1351,8 @@ class TypingEngine {
       totalTargetChars,
       totalKeystrokes: this.totalKeystrokes,
       errorCount: this.errorCount,
-      progressPercent
+      progressPercent,
+      samples: [...this.instantaneousSamples]
     };
   }
 
@@ -764,6 +1373,12 @@ class TypingEngine {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
     }
+    if (this.samplerInterval) {
+      clearInterval(this.samplerInterval);
+      this.samplerInterval = null;
+    }
+    this.recordInstantaneousSample();
+
     if (this.caret) {
       this.caret.classList.remove('typing');
     }
@@ -780,13 +1395,13 @@ class TopicTyperApp {
     this.chunks = [];
     this.currentChunkIndex = 0;
     this.currentTopicData = null;
-    this.sessionLogs = [];
+    this.sessionLogs = AnalyticsService.getSessions();
     this.isModalOpen = false;
 
     this.initDOMElements();
     this.hideResultsModal();
     this.initClock();
-    this.initSessionLogs();
+    this.initAnalyticsUI();
     this.initTypingEngine();
     this.bindUIEvents();
     this.renderPresetTags();
@@ -838,12 +1453,20 @@ class TopicTyperApp {
     this.restartChunkBtn = document.getElementById('restart-chunk-btn');
     this.skipChunkBtn = document.getElementById('skip-chunk-btn');
 
+    // Performance Analytics & Weak Keys
+    this.wpmTrendCanvas = document.getElementById('wpm-trend-canvas');
+    this.chartTooltip = document.getElementById('chart-tooltip');
+    this.chartEmptyState = document.getElementById('chart-empty-state');
+    this.topWeakKeysList = document.getElementById('top-weak-keys-list');
+    this.keyboardHeatmap = document.getElementById('keyboard-heatmap');
+    this.practiceWeakKeysBtn = document.getElementById('practice-weak-keys-btn');
+
     // Session Logs
     this.sessionLogsList = document.getElementById('session-logs-list');
     this.sessionLogCount = document.getElementById('session-log-count');
     this.clearLogsBtn = document.getElementById('clear-logs-btn');
 
-    // Modal
+    // Modal & Mini Chart
     this.resultsModal = document.getElementById('results-modal');
     this.modalBackdrop = document.getElementById('modal-backdrop');
     this.modalCard = document.getElementById('modal-card');
@@ -853,6 +1476,8 @@ class TopicTyperApp {
     this.resRawWpm = document.getElementById('res-raw-wpm');
     this.resErrors = document.getElementById('res-errors');
     this.resChars = document.getElementById('res-chars');
+    this.modalWpmCanvas = document.getElementById('modal-wpm-canvas');
+    this.modalChartTooltip = document.getElementById('modal-chart-tooltip');
     this.modalNextBtn = document.getElementById('modal-next-btn');
     this.modalRetryBtn = document.getElementById('modal-retry-btn');
     this.modalWikiLink = document.getElementById('modal-wiki-link');
@@ -886,7 +1511,7 @@ class TopicTyperApp {
       btn.dataset.topic = item.title;
       btn.textContent = `${item.icon} ${item.title}`;
       btn.addEventListener('click', () => {
-        this.topicInput.value = item.title;
+        this.topicInput.value = '';
         this.loadTopic(item.title);
       });
       this.quickTagsContainer.appendChild(btn);
@@ -925,13 +1550,34 @@ class TopicTyperApp {
       });
     }
 
-    // Clear Session History Logs Button
-    if (this.clearLogsBtn) {
-      this.clearLogsBtn.addEventListener('click', () => {
-        this.sessionLogs = [];
-        this.renderSessionLogs();
+    // Practice Weak Keys Button
+    if (this.practiceWeakKeysBtn) {
+      this.practiceWeakKeysBtn.addEventListener('click', () => {
+        this.startWeakKeysDrill();
       });
     }
+
+    // Clear Session History & Keystrokes Stats Button
+    if (this.clearLogsBtn) {
+      this.clearLogsBtn.addEventListener('click', () => {
+        if (confirm('Clear your practice history and reset weak keys analytics?')) {
+          AnalyticsService.clearSessions();
+          AnalyticsService.clearKeyStats();
+          this.sessionLogs = [];
+          this.updateAnalyticsUI();
+        }
+      });
+    }
+
+    // Window Resize Chart Redraw
+    window.addEventListener('resize', () => {
+      if (this.wpmTrendCanvas) {
+        AnalyticsService.renderWpmChart(this.wpmTrendCanvas, this.chartTooltip, this.sessionLogs);
+      }
+      if (this.isModalOpen && this.modalWpmCanvas) {
+        AnalyticsService.renderWpmChart(this.modalWpmCanvas, this.modalChartTooltip, this.sessionLogs, { isModal: true });
+      }
+    });
 
     // Sound Toggle
     this.soundToggleBtn.addEventListener('click', () => {
@@ -1122,15 +1768,22 @@ class TopicTyperApp {
 
     try {
       const data = await WikipediaService.fetchRandomTopicSummary();
-      this.topicInput.value = data.title;
+      this.topicInput.value = ''; // Keep search input completely empty!
       this.processLoadedTopic(data);
     } catch (err) {
       console.error(err);
       this.showStatus('Could not load random topic. Trying a featured topic...', 'error');
       // Curated fallback
       const fallbackItem = WikipediaService.curatedTopics[Math.floor(Math.random() * WikipediaService.curatedTopics.length)];
-      this.loadTopic(fallbackItem.title);
+      try {
+        const fbData = await WikipediaService.fetchTopicSummary(fallbackItem.title);
+        this.topicInput.value = '';
+        this.processLoadedTopic(fbData);
+      } catch (e2) {
+        this.loadTopic(fallbackItem.title);
+      }
     } finally {
+      this.topicInput.value = ''; // Ensure search input stays clean & empty
       this.searchSubmitBtn.disabled = false;
       this.randomTopicBtn.disabled = false;
     }
@@ -1286,6 +1939,13 @@ class TopicTyperApp {
 
     this.resultsModal.classList.remove('hidden');
 
+    // Render modal trend chart
+    requestAnimationFrame(() => {
+      if (this.modalWpmCanvas) {
+        AnalyticsService.renderWpmChart(this.modalWpmCanvas, this.modalChartTooltip, this.sessionLogs, { isModal: true });
+      }
+    });
+
     // Automatically focus primary modal action button
     setTimeout(() => {
       if (this.isModalOpen && this.modalNextBtn) {
@@ -1319,7 +1979,7 @@ class TopicTyperApp {
   }
 
   // ==========================================================================
-  // Real-Time Clock & Session Logging
+  // Real-Time Clock & Analytics UI Integration
   // ==========================================================================
 
   initClock() {
@@ -1333,27 +1993,82 @@ class TopicTyperApp {
     setInterval(update, 1000);
   }
 
-  initSessionLogs() {
+  initAnalyticsUI() {
+    this.updateAnalyticsUI();
+  }
+
+  updateAnalyticsUI() {
+    // 1. Session Logs List & Counter
     this.renderSessionLogs();
+
+    // 2. WPM Progress Chart
+    if (this.wpmTrendCanvas) {
+      if (this.sessionLogs.length === 0) {
+        this.chartEmptyState?.classList.remove('hidden');
+      } else {
+        this.chartEmptyState?.classList.add('hidden');
+      }
+      AnalyticsService.renderWpmChart(this.wpmTrendCanvas, this.chartTooltip, this.sessionLogs);
+    }
+
+    // 3. Heatmap & Weak Keys Summary
+    if (this.keyboardHeatmap) {
+      AnalyticsService.renderHeatmap(this.keyboardHeatmap);
+    }
+    if (this.topWeakKeysList) {
+      AnalyticsService.renderWeakKeysSummary(this.topWeakKeysList);
+    }
   }
 
   recordSessionLog(metrics) {
     const now = new Date();
     const timeStr = now.toTimeString().split(' ')[0];
+    const dateStr = now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const logItem = {
+      id: `sess_${Date.now()}`,
       topic: this.currentTopicData?.title || 'Unknown Topic',
       chunkIndex: this.currentChunkIndex + 1,
       totalChunks: this.chunks.length,
       wpm: metrics.wpm,
+      rawWpm: metrics.rawWpm,
       accuracy: metrics.accuracy,
       elapsedSeconds: metrics.elapsedSeconds,
-      timestamp: timeStr
+      errorCount: metrics.errorCount,
+      timestamp: timeStr,
+      date: dateStr,
+      samples: metrics.samples || []
     };
-    this.sessionLogs.unshift(logItem);
-    if (this.sessionLogs.length > 8) {
-      this.sessionLogs.pop();
+
+    // Save to persistent localStorage
+    this.sessionLogs = AnalyticsService.saveSession(logItem);
+    this.updateAnalyticsUI();
+  }
+
+  startWeakKeysDrill() {
+    const drill = AnalyticsService.generateWeakDrill(40);
+    const focusKeysStr = drill.weakKeys.map(k => k.toUpperCase()).join(', ');
+
+    this.currentTopicData = {
+      title: `🎯 Weak Keys Drill [${focusKeysStr}]`,
+      description: `Custom 40-word drill generated to train finger accuracy and muscle memory for keys: ${focusKeysStr}.`
+    };
+
+    this.articleTitle.textContent = this.currentTopicData.title;
+    this.articleDescription.textContent = this.currentTopicData.description;
+    if (this.wikiExternalLink) {
+      this.wikiExternalLink.classList.add('hidden');
     }
-    this.renderSessionLogs();
+
+    this.chunks = [drill.wordsText];
+    this.currentChunkIndex = 0;
+    this.renderCurrentChunk();
+
+    this.showBanner(`🎯 Loaded custom 40-word drill targeting keys [${focusKeysStr}]! Focus on accuracy.`);
+    this.focusTypingArea();
+
+    if (this.typingSection) {
+      this.typingSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   }
 
   renderSessionLogs() {
@@ -1388,6 +2103,15 @@ class TopicTyperApp {
       this.sessionLogsList.appendChild(row);
     });
   }
+}
+
+// Expose services on window/globalThis for external or template integration if available
+if (typeof window !== 'undefined') {
+  window.TextSanitizer = TextSanitizer;
+  window.WikipediaService = WikipediaService;
+  window.SoundService = SoundService;
+  window.AnalyticsService = AnalyticsService;
+  window.TypingEngine = TypingEngine;
 }
 
 // Initialize on DOM ready

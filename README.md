@@ -1,46 +1,60 @@
-# TopicTyper ⌨️ — Learn While You Type
+# TopicTyper — Learn While You Type
 
-A clean, modern, and intuitive typing practice web app designed for everyday users and students. Learn interesting topics from Wikipedia while improving your typing speed and accuracy.
+An open-learning typing & reading experiment built by **Naga Research Lab**. Learn interesting Wikipedia topics while improving your typing speed and accuracy.
 
-![Theme](https://img.shields.io/badge/Aesthetic-Clean%20Modern%20Dark--Slate-0f172a?style=flat-square&labelColor=0f172a&color=38bdf8)
-![Stack](https://img.shields.io/badge/Stack-Vanilla%20JS%20%2F%20CSS3-3b82f6?style=flat-square&labelColor=1e293b)
-![API](https://img.shields.io/badge/API-Wikipedia%20REST%20v1-10b981?style=flat-square&labelColor=1e293b)
+![Theme](https://img.shields.io/badge/Theme-Deep%20Midnight%20Navy-0B1120?style=flat-square&labelColor=0B1120&color=38BDF8)
+![Built By](https://img.shields.io/badge/Built%20By-Naga%20Research%20Lab-10B981?style=flat-square&labelColor=131C31)
+![Stack](https://img.shields.io/badge/Stack-Vanilla%20JS%20%2F%20CSS3-38BDF8?style=flat-square&labelColor=131C31)
+![API](https://img.shields.io/badge/API-Wikipedia%20REST%20v1-10B981?style=flat-square&labelColor=131C31)
 
 ---
 
-## ✨ Features & Architecture
+## ✨ Balanced 2-Column Full-Screen Architecture
 
-TopicTyper is organized into clean, distraction-free sections:
+TopicTyper utilizes screen space efficiently (94vw up to 1600px) with a clean 2-column grid that stacks responsively on mobile and tablets:
 
 - **Top Header**:
-  - Clean branding: "TopicTyper — Learn While You Type".
-  - Quick action controls: Sound toggle (`🔊 Sound: On/Off`), Practice History shortcut, and live clock.
-- **Section 1 (Topic Picker)**:
-  - Welcoming search bar: `"What do you want to learn and type today? (e.g., Solar System, History, Python)"` with instant search.
-  - `[🎲 Surprise Me (Random)]` button pulling fascinating articles directly from Wikipedia's live random summary endpoint.
-  - Friendly horizontal topic pills (Science, History, Space, Technology, Movies, Nature, etc.) with a `🔀 More Topics` shuffle button.
-- **Section 2 (Article Info & Live Stats)**:
-  - Left card: Topic title, direct Wikipedia link (`Read on Wikipedia ↗`), clean summary, and paragraph navigation (`◀ Prev` / `Next ▶`).
-  - Right card: Clear, high-contrast stat cards for **Speed (WPM)**, **Accuracy (%)**, **Time (MM:SS)**, and **Progress (Chars & %)** with a smooth progress bar.
-- **Section 3 (Main Typing Area)**:
-  - Spacious, high-contrast reading and typing card.
-  - Text is 100% readable from the start with no intrusive blur.
-  - Smooth blinking cursor with character tracking across lines.
-  - Convenient controls below: `↺ Restart [Esc]` and `Next Paragraph [Tab] ➔`.
-- **Section 4 (Practice History)**:
-  - Session history log tracking your completed runs, WPM, accuracy, and timestamps.
-  - `Clear History` button to purge past runs whenever needed.
+  - Custom brand logo (`logo.png`, 38px x 38px, rounded 10px).
+  - Clean title: "TopicTyper" with subtitle "Learn While You Type".
+  - Quick action controls: Sound toggle (`🔊 Sound: On/Off`), Practice History shortcut, and live session timer.
+- **Sleek Topic Discovery Bar**:
+  - Clean search input with placeholder: `"Search any topic (e.g., Quantum Computing, Astrophysics, History)..."` (kept empty on initial load and when rolling random topics).
+  - `[🎲 Surprise Me (Random)]` button querying live Wikipedia summaries.
+  - Horizontal quick-pick chips with a `🔀 More Topics` shuffle button.
+- **Left Column (Topic Overview & Live Telemetry)**:
+  - Topic title, direct Wikipedia link (`Read on Wikipedia ↗`), short description, and paragraph navigation (`◀ Prev` / `Next ▶`).
+  - High-contrast stat cards for **Speed (WPM)**, **Accuracy (%)**, **Time (MM:SS)**, and **Progress (Chars & %)** with a smooth progress bar.
+- **Spacious Typing Arena**:
+  - Spacious card without nested borders.
+  - Crisp monospace typography (`1.45rem`, generous line-height `1.9`).
+  - Unblurred text overlay keeping text 100% visible before typing.
+  - Action buttons below: `↺ Restart [Esc]` and `Next Paragraph [Tab] ➔`.
+- **Intelligent Performance Analytics & WPM Progress Chart**:
+  - Samples instantaneous WPM every 2 seconds during active typing.
+  - Tracks speed progression across the last 15 completed paragraphs using pure HTML5 Canvas (zero external libraries).
+  - Features smooth cubic Bezier spline curves, linear gradient area fill (`#38BDF8`), a 3-session moving-average line (`#10B981`), and interactive glassmorphic hover tooltips.
+  - Mirrored responsive mini-trend chart directly inside the **Completion Modal**.
+- **Weak Keys Detector & Heatmap Ergonomics**:
+  - Automatically records keystroke accuracy per character in persistent storage (`topictyper_keystats`).
+  - Highlights Top 5 attention keys color-coded by error rate: Soft Coral (`#F43F5E`) if > 15%, Amber (`#F59E0B`) if 5–15%, Emerald (`#10B981`) if < 5%.
+  - Visual interactive QWERTY mini-keyboard heatmap color-coded by finger accuracy.
+  - **`🎯 Practice Weak Keys`**: Generates a custom 40-word drill packed with words containing the user's top weak letters, loaded directly into the arena.
 - **Completion Modal**:
-  - Clean celebration dialog showing speed, accuracy, elapsed time, raw WPM, errors, and characters typed.
+  - Celebration dialog with speed, accuracy, elapsed time, raw WPM, errors, characters typed, and WPM trend chart.
   - Fast keyboard flow: <kbd>Enter</kbd> / <kbd>Space</kbd> for Next Paragraph, <kbd>Esc</kbd> to practice again, or click outside to dismiss cleanly.
+- **Naga Research Lab Footer**:
+  - Attribution: `"TopicTyper — An open-learning typing & reading experiment. Built by Naga Research Lab."`
+  - Subtle badges for quick keyboard shortcuts.
 
 ---
 
-## 🎨 Design & Aesthetic
+## 🎨 Color Psychology & Aesthetic
 
-- **Theme**: Soft dark slate (`#0f172a` background, `#1e293b` elevated cards, `#334155` soft borders).
-- **Typography**: Clean sans-serif (`Inter` / system-ui) for all user interface controls, headings, and buttons; crisp monospace (`JetBrains Mono` / `Fira Code`) reserved exclusively for the typing text.
-- **Readability**: Easy on the eyes, generous spacing, zero aggressive blur, and high-contrast color highlights (emerald for correct characters, soft rose for typos).
+- **Deep Midnight Navy (`#0B1120`)**: Deep low-fatigue background promoting sustained focus.
+- **Elevated Slate-Glass Cards (`#131C31`)**: Subtle `1px solid rgba(148, 163, 184, 0.12)` borders.
+- **Cognitive Sky Blue (`#38BDF8`)**: High-visibility accent for the active caret, links, and primary actions.
+- **Emerald (`#10B981`)**: Positive feedback for correct keystrokes and high accuracy.
+- **Soft Coral (`#F43F5E`)**: Gentle, non-punitive identification of typos.
 
 ---
 
