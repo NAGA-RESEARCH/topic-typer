@@ -111,6 +111,7 @@ body {
    ========================================================================== */
 
 .app-header {
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -120,6 +121,8 @@ body {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   gap: 16px;
+  position: relative;
+  z-index: 10;
 }
 
 .header-brand-group {
@@ -437,12 +440,13 @@ body {
    ========================================================================== */
 
 .setup-hero {
+  width: 100%;
   text-align: center;
-  padding: 14px 20px 4px;
+  padding: 8px 0 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .hero-badge {
@@ -475,17 +479,21 @@ body {
 }
 
 .setup-card {
+  width: 100%;
+  max-width: 1280px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-card);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
-  padding: 24px 28px;
+  padding: 26px 30px;
   display: flex;
   flex-direction: column;
   gap: 22px;
+  text-align: left;
 }
 
 .setup-step {
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -523,12 +531,14 @@ body {
 
 /* Mode Selector Grid */
 .mode-selector-grid {
+  width: 100%;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 14px;
 }
 
 .mode-card {
+  min-width: 0;
   background-color: var(--bg-input);
   border: 1.5px solid var(--border-subtle);
   border-radius: var(--radius-lg);
@@ -651,12 +661,14 @@ body {
 
 /* Topic Cards Grid */
 .topic-cards-grid {
+  width: 100%;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
 
 .topic-card {
+  min-width: 0;
   background-color: var(--bg-input);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -698,12 +710,13 @@ body {
 }
 
 .custom-topic-box {
+  width: 100%;
   display: flex;
   align-items: center;
   background-color: var(--bg-input);
   border: 1.5px solid var(--border-input);
   border-radius: var(--radius-md);
-  padding: 4px 12px;
+  padding: 4px 14px;
   gap: 10px;
   transition: all 0.2s ease;
 }
@@ -730,9 +743,10 @@ body {
 
 /* Start Practice CTA */
 .start-cta-row {
+  width: 100%;
   display: flex;
   justify-content: center;
-  padding-top: 4px;
+  padding-top: 6px;
 }
 
 .btn-hero {
@@ -1237,6 +1251,8 @@ body {
 
 .analytics-section {
   width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
 }
 
 .analytics-grid {
