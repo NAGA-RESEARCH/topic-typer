@@ -426,6 +426,14 @@ class TypingEngine {
     this.bindEvents();
   }
 
+  get currentIndex() {
+    return this.activeCharIndex;
+  }
+
+  set currentIndex(val) {
+    this.activeCharIndex = val;
+  }
+
   bindEvents() {
     this.hiddenInput.addEventListener('keydown', (e) => this.handleKeyDown(e));
     this.hiddenInput.addEventListener('input', (e) => this.handleInput(e));
@@ -579,7 +587,7 @@ class TypingEngine {
 
   handleSpace() {
     if (this.isCompleted || this.isModalOpen || !this.targetText || this.targetText.length === 0) return;
-    if (this.activeCharIndex >= this.targetText.length) {
+    if (this.currentIndex >= this.targetText.length) {
       this.finishTest();
       return;
     }
@@ -598,7 +606,7 @@ class TypingEngine {
       this.activeCharIndex++;
       this.updateCaretPosition();
       this.updateMetrics();
-      if (this.targetText && this.targetText.length > 0 && this.activeCharIndex >= this.targetText.length) {
+      if (this.targetText && this.targetText.length > 0 && this.currentIndex >= this.targetText.length) {
         this.finishTest();
       }
       return;
@@ -620,7 +628,7 @@ class TypingEngine {
       this.activeCharIndex = nextSpaceIdx + 1;
       this.updateCaretPosition();
       this.updateMetrics();
-      if (this.targetText && this.targetText.length > 0 && this.activeCharIndex >= this.targetText.length) {
+      if (this.targetText && this.targetText.length > 0 && this.currentIndex >= this.targetText.length) {
         this.finishTest();
       }
     } else {
@@ -630,7 +638,7 @@ class TypingEngine {
 
   processChar(typedChar) {
     if (this.isCompleted || this.isModalOpen || !this.targetText || this.targetText.length === 0) return;
-    if (this.activeCharIndex >= this.targetText.length) {
+    if (this.currentIndex >= this.targetText.length) {
       this.finishTest();
       return;
     }
@@ -660,7 +668,7 @@ class TypingEngine {
     this.updateCaretPosition();
     this.updateMetrics();
 
-    if (this.targetText && this.targetText.length > 0 && this.activeCharIndex >= this.targetText.length) {
+    if (this.targetText && this.targetText.length > 0 && this.currentIndex >= this.targetText.length) {
       this.finishTest();
     }
   }
@@ -750,10 +758,10 @@ class TypingEngine {
 
   finishTest() {
     if (this.isCompleted) return;
-    // Guard: ONLY trigger when targetText.length > 0 and activeCharIndex >= targetText.length
+    // Guard: ONLY trigger when targetText.length > 0 and currentIndex >= targetText.length
     // Never trigger on empty 0 / 0 state during initial load or API fetch
     if (!this.targetText || this.targetText.length === 0) return;
-    if (this.activeCharIndex < this.targetText.length) return;
+    if (this.currentIndex < this.targetText.length) return;
 
     this.isCompleted = true;
     if (this.timerInterval) {
@@ -945,7 +953,7 @@ class TopicTyperApp {
     });
 
     this.hiddenInput.addEventListener('focus', () => {
-      if (this.isModalOpen) {
+      if (this.isModalOpen || !this.resultsModal.classList.contains('hidden')) {
         this.hiddenInput.blur();
         return;
       }
@@ -978,16 +986,16 @@ class TopicTyperApp {
       this.retryFromModal();
     });
 
-    // Clicking backdrop / anywhere outside modal-card advances cleanly
+    // Clicking backdrop / anywhere outside modal-card dismisses cleanly
     this.modalBackdrop.addEventListener('click', (e) => {
       e.preventDefault();
-      this.advanceFromModal();
+      this.dismissModal();
     });
 
     this.resultsModal.addEventListener('click', (e) => {
       if (e.target === this.resultsModal) {
         e.preventDefault();
-        this.advanceFromModal();
+        this.dismissModal();
       }
     });
 
@@ -1004,16 +1012,42 @@ class TopicTyperApp {
       // - Escape triggers "Retry Chunk", hides modal, re-focuses typing input
       // - Background keystrokes are completely ignored
       if (this.isModalOpen || !this.resultsModal.classList.contains('hidden')) {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
-          this.advanceFromModal();
-          return;
-        }
         if (e.key === 'Escape') {
           e.preventDefault();
           e.stopPropagation();
           this.retryFromModal();
+          return;
+        }
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (document.activeElement === this.modalRetryBtn) {
+            this.retryFromModal();
+          } else if (document.activeElement === this.modalWikiLink && e.key === 'Enter') {
+            this.modalWikiLink.click();
+          } else {
+            this.advanceFromModal();
+          }
+          return;
+        }
+        // Allow Tab to cycle focus between modal controls
+        if (e.key === 'Tab') {
+          const focusable = [this.modalNextBtn, this.modalRetryBtn, this.modalWikiLink].filter(Boolean);
+          if (focusable.length > 0) {
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey) {
+              if (document.activeElement === first || !focusable.includes(document.activeElement)) {
+                e.preventDefault();
+                last.focus();
+              }
+            } else {
+              if (document.activeElement === last || !focusable.includes(document.activeElement)) {
+                e.preventDefault();
+                first.focus();
+              }
+            }
+          }
           return;
         }
         // Intercept keys so they don't bleed into typing area
@@ -1055,7 +1089,7 @@ class TopicTyperApp {
   }
 
   focusTypingArea() {
-    if (this.isModalOpen) return;
+    if (this.isModalOpen || !this.resultsModal.classList.contains('hidden')) return;
     this.hiddenInput.value = '';
     this.hiddenInput.focus();
     this.typingSection.classList.add('focused');
@@ -1204,12 +1238,11 @@ class TopicTyperApp {
   }
 
   showResultsModal(finalMetrics) {
-    // Guard: ONLY trigger when targetText is non-empty and activeCharIndex >= targetText.length
+    // Guard: ONLY trigger when targetText.length > 0 and currentIndex >= targetText.length
     // Never trigger on empty 0 / 0 state during initial load or API fetch
-    if (!this.engine.targetText || this.engine.targetText.length === 0) {
-      return;
-    }
-    if (this.engine.activeCharIndex < this.engine.targetText.length) {
+    const targetText = this.engine?.targetText || '';
+    const currentIndex = this.engine?.currentIndex ?? this.engine?.activeCharIndex ?? 0;
+    if (!targetText || targetText.length === 0 || currentIndex < targetText.length) {
       return;
     }
 
@@ -1225,6 +1258,8 @@ class TopicTyperApp {
     if (this.typingSection) {
       this.typingSection.classList.remove('focused');
     }
+
+    finalMetrics = finalMetrics || this.engine.computeMetrics();
 
     this.resWpm.textContent = finalMetrics.wpm;
     this.resAccuracy.textContent = `${finalMetrics.accuracy}%`;
@@ -1262,6 +1297,10 @@ class TopicTyperApp {
     this.hideResultsModal();
     this.restartCurrentChunk();
     this.focusTypingArea();
+  }
+
+  dismissModal() {
+    this.advanceFromModal();
   }
 
   hideResultsModal() {
