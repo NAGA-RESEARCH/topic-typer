@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TopicTyper // Tactical Cyber-Terminal HUD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- CRT Scanlines and Vignette Overlay for Tactical Cyber Atmosphere -->
+  <div class="crt-scanlines" aria-hidden="true"></div>
+  <div class="crt-vignette" aria-hidden="true"></div>
+
+  <!-- Main HUD Application Shell -->
+  <div class="hud-app-wrapper">
+    <!-- Tactical Top Status Bar / HUD Header -->
+    <header class="tactical-hud-header">
+      <div class="hud-brand">
+        <div class="hud-status-node">
+          <span class="radar-dot"></span>
+          <span class="radar-ping"></span>
+        </div>
+        <div class="hud-title-wrap">
+          <span class="hud-sys-tag">// TOPIC_TYPER_v2.5</span>
+          <span class="hud-sys-label">TACTICAL PENTESTING HUD // WIKIPEDIA INTEL DECRYPTOR</span>
+        </div>
+      </div>
+
+      <div class="hud-telemetry-banner">
+        <span class="hud-pill"><span class="pill-dot dot-green"></span> NET_STATUS: LINK_ESTABLISHED</span>
+        <span class="hud-pill"><span class="pill-dot dot-cyan"></span> NODE: 127.0.0.1 // WIKI_API</span>
+        <span class="hud-pill hud-clock-pill"><span class="pill-icon">⏱</span> <span id="hud-clock">00:00:00</span></span>
+      </div>
+
+      <div class="hud-window-controls" aria-hidden="true">
+        <span class="cyber-dot dot-red" title="ABORT"></span>
+        <span class="cyber-dot dot-yellow" title="STANDBY"></span>
+        <span class="cyber-dot dot-green" title="ENGAGED"></span>
+      </div>
+    </header>
+
+    <!-- Modular Bento-Grid Dashboard -->
+    <main class="bento-dashboard">
+
+      <!-- ====================================================================
+           CARD 1 [TARGET ACQUISITION / SEARCH] (Top-Left)
+           ==================================================================== -->
+      <section class="bento-card card-target-acquisition" id="card-target-acquisition">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-prefix">// SEC_CARD_01</span>
+            <h2 class="card-title">TARGET ACQUISITION</h2>
+          </div>
+          <div class="card-badges">
+            <span class="tactical-badge">RECON_NODE</span>
+            <span class="tactical-badge badge-cyan"><span class="pulse-indicator"></span> ARMED</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <!-- Terminal Search Form -->
+          <form id="topic-form" class="cyber-search-form" autocomplete="off">
+            <div class="cyber-input-wrapper">
+              <label for="topic-input" class="cyber-terminal-prompt">root@typer:~# fetch --topic</label>
+              <div class="input-action-cluster">
+                <input 
+                  type="text" 
+                  id="topic-input" 
+                  class="cyber-input" 
+                  placeholder="Target query (e.g. Linux, Quantum Computing, Cryptography)..." 
+                  required
+                  spellcheck="false"
+                />
+                <div class="form-btn-group">
+                  <button type="submit" id="search-submit-btn" class="cyber-btn cyber-btn-primary" title="Acquire target topic [Enter]">
+                    <span>FETCH ↵</span>
+                  </button>
+                  <button type="button" id="random-topic-btn" class="cyber-btn cyber-btn-outline" title="Roll a dynamic random topic from Wikipedia">
+                    <span>🎲 RANDOM TARGET</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+
+          <!-- Preset Target Vectors (Category Chips) -->
+          <div class="preset-vectors-wrap">
+            <div class="preset-header-row">
+              <span class="preset-label">> TARGET_VECTORS // CURATED_POOLS:</span>
+              <button type="button" id="shuffle-preset-link" class="cyber-link-btn" title="Shuffle Preset Categories">
+                🔀 SHUFFLE_POOLS
+              </button>
+            </div>
+            <div class="quick-tags" id="quick-tags-container">
+              <!-- Dynamically populated & shuffled via app.js -->
+              <button type="button" class="quick-tag-btn" data-topic="Computer Science">💻 Computer Science</button>
+              <button type="button" class="quick-tag-btn" data-topic="Space Exploration">🚀 Space Exploration</button>
+              <button type="button" class="quick-tag-btn" data-topic="Linux">🐧 Linux</button>
+              <button type="button" class="quick-tag-btn" data-topic="History">📜 History</button>
+              <button type="button" class="quick-tag-btn" data-topic="Cinema">🎬 Cinema</button>
+              <button type="button" class="quick-tag-btn" data-topic="Quantum Computing">⚡ Quantum Computing</button>
+              <button type="button" class="quick-tag-btn" data-topic="Neuroscience">🧠 Neuroscience</button>
+              <button type="button" class="quick-tag-btn" data-topic="Ancient Rome">🏛️ Ancient Rome</button>
+              <button type="button" id="shuffle-tags-btn" class="quick-tag-btn shuffle-btn" title="Shuffle Preset Tags">🔀 Shuffle</button>
+            </div>
+          </div>
+
+          <!-- Notification Banner -->
+          <div id="status-banner" class="status-banner hidden" role="status" aria-live="polite">
+            <span class="banner-spinner hidden" id="banner-spinner"></span>
+            <span id="banner-message" class="banner-message"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           CARD 2 [LIVE TELEMETRY HUD] (Top-Right)
+           ==================================================================== -->
+      <section class="bento-card card-telemetry-hud" id="card-telemetry-hud">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-prefix">// SEC_CARD_02</span>
+            <h2 class="card-title">LIVE TELEMETRY HUD</h2>
+          </div>
+          <div class="card-badges">
+            <span class="tactical-badge badge-green"><span class="pulse-indicator pulse-green"></span> STREAM: ACTIVE</span>
+            <span class="tactical-badge">RATE: 100ms</span>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <!-- Real-Time Metrics Grid (4 Core Quadrants) -->
+          <div class="hud-quadrants-grid">
+            <div class="hud-quadrant">
+              <div class="hud-quadrant-header">
+                <span class="hud-stat-label">WPM</span>
+                <span class="hud-stat-tag">NET</span>
+              </div>
+              <div class="hud-stat-value glow-green" id="stat-wpm">0</div>
+              <div class="hud-quadrant-footer">
+                <span class="hud-tiny-badge">KEYSTREAM_RATE</span>
+              </div>
+            </div>
+
+            <div class="hud-quadrant">
+              <div class="hud-quadrant-header">
+                <span class="hud-stat-label">ACCURACY</span>
+                <span class="hud-stat-tag">RATIO</span>
+              </div>
+              <div class="hud-stat-value glow-cyan" id="stat-accuracy">100%</div>
+              <div class="hud-quadrant-footer">
+                <span class="hud-tiny-badge">BIT_PRECISION</span>
+              </div>
+            </div>
+
+            <div class="hud-quadrant">
+              <div class="hud-quadrant-header">
+                <span class="hud-stat-label">TIME</span>
+                <span class="hud-stat-tag">ELAPSED</span>
+              </div>
+              <div class="hud-stat-value glow-amber" id="stat-time">00:00</div>
+              <div class="hud-quadrant-footer">
+                <span class="hud-tiny-badge">SESSION_TICK</span>
+              </div>
+            </div>
+
+            <div class="hud-quadrant">
+              <div class="hud-quadrant-header">
+                <span class="hud-stat-label">PROGRESS</span>
+                <span class="hud-stat-tag" id="progress-percent">0%</span>
+              </div>
+              <div class="hud-stat-value glow-purple" id="stat-progress-text">0 / 0</div>
+              <div class="hud-quadrant-footer">
+                <span class="hud-tiny-badge">CHARS_SYNCED</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Laser Progress Bar Container -->
+          <div class="cyber-progress-block">
+            <div class="progress-info-row">
+              <span class="progress-label">> BUFFER_STREAM_FILL:</span>
+              <span class="progress-status" id="stream-status-badge">[STATUS: READY]</span>
+            </div>
+            <div class="progress-bar-container">
+              <div id="progress-bar-fill" class="progress-bar-fill"></div>
+            </div>
+          </div>
+
+          <!-- Hacker-Style Status Badges -->
+          <div class="telemetry-tags-row">
+            <span class="cyber-status-chip"><span class="chip-led led-green"></span> CIPHER: AES_READY</span>
+            <span class="cyber-status-chip"><span class="chip-led led-cyan"></span> PROTOCOL: REST_API</span>
+            <span class="cyber-status-chip"><span class="chip-led led-amber"></span> ENGINE: 0_LATENCY</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           CARD 3 [PAYLOAD / TYPING ARENA] (Full-Width Prominent Center)
+           ==================================================================== -->
+      <section class="bento-card card-payload-arena" id="card-payload-arena">
+        <div class="card-header payload-header-wrap">
+          <div class="payload-meta-left">
+            <div class="card-title-group">
+              <span class="card-prefix">// SEC_CARD_03 // TARGET_PAYLOAD</span>
+              <div class="payload-title-row">
+                <h1 id="article-title" class="article-title">Loading topic...</h1>
+                <a id="wiki-external-link" href="#" target="_blank" rel="noopener noreferrer" class="cyber-source-link" title="Open source intelligence on Wikipedia">
+                  [INTEL_SRC: wikipedia.org ↗]
+                </a>
+              </div>
+              <p id="article-description" class="article-description">Summary excerpt from Wikipedia Intelligence Database</p>
+            </div>
+          </div>
+
+          <div class="payload-meta-right">
+            <!-- Audio Toggle Button in Card 3 -->
+            <button id="sound-toggle-btn" class="cyber-btn sound-toggle-btn" title="Toggle Mechanical Typing Sounds" aria-label="Toggle typing sound">
+              <span class="btn-icon">🔊</span>
+              <span class="btn-label">SOUND: ON</span>
+            </button>
+
+            <!-- Chunk Navigation and Badges -->
+            <div class="chunk-control-group">
+              <div class="chunk-meta-badges">
+                <span class="tactical-badge badge-cyan" id="chunk-counter">CHUNK 1 / 1</span>
+                <span class="tactical-badge badge-muted" id="chunk-word-count">0 words</span>
+              </div>
+              <div class="chunk-nav-buttons">
+                <button type="button" id="prev-chunk-btn" class="cyber-btn nav-btn" title="Previous Chunk (Left Arrow)">◀ PREV</button>
+                <button type="button" id="next-chunk-btn" class="cyber-btn nav-btn" title="Next Chunk (Right Arrow)">NEXT ▶</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Typing Practice Area -->
+        <div class="typing-arena-body">
+          <div class="typing-section" id="typing-section">
+            <!-- Hidden input to capture keystrokes on desktop & mobile keyboards -->
+            <input 
+              type="text" 
+              id="hidden-input" 
+              class="hidden-input" 
+              autocomplete="off" 
+              autocorrect="off" 
+              autocapitalize="off" 
+              spellcheck="false" 
+              tabindex="0"
+              aria-label="Tactical keystream input field"
+            />
+
+            <!-- Words container with precision smooth block cursor -->
+            <div id="words-container" class="words-container">
+              <div id="caret" class="caret"></div>
+              <!-- Target words and characters populated via app.js -->
+            </div>
+
+            <!-- Focus Reminder Overlay (hidden when typing area has focus) -->
+            <div id="focus-overlay" class="focus-overlay">
+              <div class="focus-prompt">
+                <span class="blink">▌</span> [TERMINAL_STANDBY] Click arena or press any key to engage keystream
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payload Action Bar -->
+        <div class="payload-footer-bar">
+          <div class="arena-action-buttons">
+            <button type="button" id="restart-chunk-btn" class="cyber-btn cyber-btn-outline" title="Restart current chunk [Esc]">
+              <span>↻ RESTART CHUNK [Esc]</span>
+            </button>
+            <button type="button" id="skip-chunk-btn" class="cyber-btn cyber-btn-outline" title="Skip to next chunk [Tab]">
+              <span>➔ NEXT CHUNK [Tab]</span>
+            </button>
+          </div>
+
+          <div class="arena-telemetry-status">
+            <span class="arena-stat-pill"><span class="pulse-indicator pulse-green"></span> CARET_TRACKING: PRECISION_BLOCK</span>
+            <span class="arena-stat-pill">CHARSET: UTF8_NORMALIZED</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           CARD 4 [SESSION LOGS / HISTORY] (Compact Bottom Card)
+           ==================================================================== -->
+      <section class="bento-card card-session-logs" id="card-session-logs">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-prefix">// SEC_CARD_04</span>
+            <h2 class="card-title">SESSION LOGS & COMMAND MATRIX</h2>
+          </div>
+          <div class="card-badges">
+            <span class="tactical-badge" id="session-log-count">0 RUNS LOGGED</span>
+            <span class="tactical-badge badge-green"><span class="pulse-indicator pulse-green"></span> DAEMON: ONLINE</span>
+          </div>
+        </div>
+
+        <div class="session-card-grid">
+          <!-- Left Zone: Live Session Telemetry Logs -->
+          <div class="session-logs-panel">
+            <div class="panel-subhead">
+              <span class="subhead-title">> EXECUTION_JOURNAL // RECENT RUNS:</span>
+              <button type="button" id="clear-logs-btn" class="cyber-text-btn" title="Clear session logs">[PURGE_LOGS]</button>
+            </div>
+            <div id="session-logs-list" class="session-logs-list">
+              <div class="empty-log-state">
+                <span class="terminal-dim">[LOG_DAEMON // STANDBY]</span> Telemetry stream initialized. Complete a chunk payload to log performance metrics.
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Zone: Quick Keyboard Shortcut Hints Matrix -->
+          <div class="session-shortcuts-panel">
+            <div class="panel-subhead">
+              <span class="subhead-title">> COMMAND_MATRIX // TACTICAL SHORTCUTS:</span>
+              <span class="subhead-tag">HOTKEYS_ACTIVE</span>
+            </div>
+            <div class="shortcuts-matrix">
+              <div class="shortcut-box">
+                <kbd class="cyber-kbd">Tab</kbd>
+                <div class="shortcut-meta">
+                  <span class="shortcut-cmd">Next / Replay Chunk</span>
+                  <span class="shortcut-detail">Skip or loop active payload</span>
+                </div>
+              </div>
+              <div class="shortcut-box">
+                <kbd class="cyber-kbd">Esc</kbd>
+                <div class="shortcut-meta">
+                  <span class="shortcut-cmd">Restart Chunk</span>
+                  <span class="shortcut-detail">Reset caret & keystream timer</span>
+                </div>
+              </div>
+              <div class="shortcut-box">
+                <kbd class="cyber-kbd">/</kbd>
+                <div class="shortcut-meta">
+                  <span class="shortcut-cmd">Focus Search</span>
+                  <span class="shortcut-detail">Jump directly to topic input</span>
+                </div>
+              </div>
+              <div class="shortcut-box">
+                <kbd class="cyber-kbd">Enter</kbd>
+                <div class="shortcut-meta">
+                  <span class="shortcut-cmd">Next Payload</span>
+                  <span class="shortcut-detail">Advance from results modal</span>
+                </div>
+              </div>
+              <div class="shortcut-box">
+                <kbd class="cyber-kbd">Space</kbd>
+                <div class="shortcut-meta">
+                  <span class="shortcut-cmd">Advance Modal</span>
+                  <span class="shortcut-detail">Confirm completion dialog</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Results Modal Overlay -->
+    <div id="results-modal" class="results-modal hidden" role="dialog" aria-modal="true" aria-labelledby="results-title">
+      <div class="modal-backdrop" id="modal-backdrop"></div>
+      <div class="modal-card" id="modal-card">
+        <div class="modal-header">
+          <span class="modal-badge">[MISSION DEBRIEF // PAYLOAD TERMINATED]</span>
+          <h2 id="results-title" class="modal-title">> Chunk Completed!</h2>
+        </div>
+
+        <div class="modal-stats-grid">
+          <div class="modal-stat-box">
+            <span class="box-label">SPEED (WPM)</span>
+            <span class="box-value highlight-green" id="res-wpm">0</span>
+          </div>
+          <div class="modal-stat-box">
+            <span class="box-label">ACCURACY</span>
+            <span class="box-value highlight-cyan" id="res-accuracy">100%</span>
+          </div>
+          <div class="modal-stat-box">
+            <span class="box-label">TIME</span>
+            <span class="box-value highlight-amber" id="res-time">00:00</span>
+          </div>
+          <div class="modal-stat-box">
+            <span class="box-label">RAW WPM</span>
+            <span class="box-value" id="res-raw-wpm">0</span>
+          </div>
+          <div class="modal-stat-box">
+            <span class="box-label">ERRORS</span>
+            <span class="box-value highlight-red" id="res-errors">0</span>
+          </div>
+          <div class="modal-stat-box">
+            <span class="box-label">CHARACTERS</span>
+            <span class="box-value" id="res-chars">0 / 0</span>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="modal-next-btn" class="cyber-btn cyber-btn-primary" tabindex="0">
+            <span>NEXT CHUNK [Enter / Space] ↵</span>
+          </button>
+          <button type="button" id="modal-retry-btn" class="cyber-btn cyber-btn-outline" tabindex="0">
+            <span>RETRY CHUNK [Esc]</span>
+          </button>
+          <a id="modal-wiki-link" href="#" target="_blank" rel="noopener noreferrer" class="cyber-btn wiki-action-btn" tabindex="0">
+            <span>READ ON WIKIPEDIA ↗</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tactical Footer -->
+    <footer class="tactical-hud-footer">
+      <div class="footer-left">
+        <span class="pulse-indicator pulse-green"></span>
+        <span>TOPIC_TYPER_v2.5 // BENTO_TERMINAL_HUD // WIKIPEDIA REST ENGINE</span>
+      </div>
+      <div class="footer-right">
+        <span>PRESS <kbd class="cyber-kbd">/</kbd> TO ACQUIRE TARGET • <kbd class="cyber-kbd">Tab</kbd> ADVANCE • <kbd class="cyber-kbd">Esc</kbd> RESTART</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
