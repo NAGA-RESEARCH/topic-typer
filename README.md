@@ -1,58 +1,58 @@
-# TopicTyper ⚡ // Tactical Cyber-Terminal HUD
+# TopicTyper ⌨️ — Learn While You Type
 
-A high-performance, modular **Bento-Grid Hacker / Cyber-Terminal Dashboard** for typing practice on dynamic Wikipedia intel feeds.
+A clean, modern, and intuitive typing practice web app designed for everyday users and students. Learn interesting topics from Wikipedia while improving your typing speed and accuracy.
 
-![Theme](https://img.shields.io/badge/Aesthetic-Tactical%20Pentesting%20HUD-05070a?style=flat-square&labelColor=05070a&color=00ff41)
-![Bento Grid](https://img.shields.io/badge/Layout-Modular%20Bento--Grid-00f3ff?style=flat-square&labelColor=080c14)
-![Vanilla JS](https://img.shields.io/badge/Stack-Pure%20JS%20%2F%20CSS3-38bdf8?style=flat-square&labelColor=080c14)
-![Wikipedia REST API](https://img.shields.io/badge/API-Wikipedia%20REST%20v1-00ff41?style=flat-square&labelColor=080c14)
-
----
-
-## 🖥️ Modular Bento-Grid Architecture
-
-Instead of a monolithic window, the entire interface is architected as an independent, floating **Bento-Grid HUD**:
-
-- **Card 1 [TARGET ACQUISITION / SEARCH]** (Top-Left):
-  - Tactical terminal command line: `root@typer:~# fetch --topic`
-  - Instant topic search with real-time fetch feedback.
-  - `[🎲 RANDOM TARGET]` button querying Wikipedia's live random summary endpoint.
-  - Shuffled category chips (`💻 Computer Science`, `🚀 Space Exploration`, `🐧 Linux`, `⚡ Quantum Computing`, `🧠 Neuroscience`, etc.) with `🔀 SHUFFLE_POOLS`.
-- **Card 2 [LIVE TELEMETRY HUD]** (Top-Right):
-  - 4 real-time telemetry quadrants: **WPM (Net)**, **Accuracy (%)**, **Elapsed Time (MM:SS)**, and **Buffer Stream Progress (Chars & %)**.
-  - Cyber laser progress bar with status state indicator (`[STATUS: READY]`, `[STATUS: DECRYPTING]`, `[STATUS: BUFFER_COMPLETE]`).
-  - Tactical status badges (`CIPHER: AES_READY`, `PROTOCOL: REST_API`, `ENGINE: 0_LATENCY`).
-- **Card 3 [PAYLOAD / TYPING ARENA]** (Full-Width Prominent Center):
-  - Prominent full-width typing console with large, crisp monospace typography.
-  - Surgical **smooth blinking block cursor** that dynamically matches character geometry.
-  - Tactical payload header with article intelligence, Wikipedia external link, chunk counter, and chunk navigation (`◀ PREV` / `NEXT ▶`).
-  - Integrated audio toggle button (`🔊 SOUND: ON/OFF`) with synthesized mechanical switch clicks via the Web Audio API.
-  - Quick action controls: `↻ RESTART CHUNK [Esc]` and `➔ NEXT CHUNK [Tab]`.
-- **Card 4 [SESSION LOGS / HISTORY]** (Compact Bottom Card):
-  - **Execution Journal**: Real-time telemetry log displaying completed topic chunks, WPM scores, accuracy ratings, timestamps, and status badges. Includes a `[PURGE_LOGS]` button.
-  - **Command Matrix**: Quick reference HUD for tactical keyboard shortcuts (`Tab`, `Esc`, `/`, `Enter`, `Space`).
+![Theme](https://img.shields.io/badge/Aesthetic-Clean%20Modern%20Dark--Slate-0f172a?style=flat-square&labelColor=0f172a&color=38bdf8)
+![Stack](https://img.shields.io/badge/Stack-Vanilla%20JS%20%2F%20CSS3-3b82f6?style=flat-square&labelColor=1e293b)
+![API](https://img.shields.io/badge/API-Wikipedia%20REST%20v1-10b981?style=flat-square&labelColor=1e293b)
 
 ---
 
-## 🎨 Theme & Aesthetic
+## ✨ Features & Architecture
 
-- **Deep Pitch-Black Void**: Base color `#05070a` with a subtle 32px cyber-grid texture.
-- **Phosphor Terminal Green (`#00ff41`) & Electric Cyan (`#00f3ff`)**: Authentic high-contrast tactical accents with neon glow blooms.
-- **Tactical Reticle Accents**: 1px sharp borders with neon corner brackets on every floating card.
-- **Subtle CRT Scanlines & Vignette**: Ambient scanline filter and radial lens darkening without compromising text sharpness.
-- **Crisp Monospace Fonts**: JetBrains Mono and Fira Code.
+TopicTyper is organized into clean, distraction-free sections:
+
+- **Top Header**:
+  - Clean branding: "TopicTyper — Learn While You Type".
+  - Quick action controls: Sound toggle (`🔊 Sound: On/Off`), Practice History shortcut, and live clock.
+- **Section 1 (Topic Picker)**:
+  - Welcoming search bar: `"What do you want to learn and type today? (e.g., Solar System, History, Python)"` with instant search.
+  - `[🎲 Surprise Me (Random)]` button pulling fascinating articles directly from Wikipedia's live random summary endpoint.
+  - Friendly horizontal topic pills (Science, History, Space, Technology, Movies, Nature, etc.) with a `🔀 More Topics` shuffle button.
+- **Section 2 (Article Info & Live Stats)**:
+  - Left card: Topic title, direct Wikipedia link (`Read on Wikipedia ↗`), clean summary, and paragraph navigation (`◀ Prev` / `Next ▶`).
+  - Right card: Clear, high-contrast stat cards for **Speed (WPM)**, **Accuracy (%)**, **Time (MM:SS)**, and **Progress (Chars & %)** with a smooth progress bar.
+- **Section 3 (Main Typing Area)**:
+  - Spacious, high-contrast reading and typing card.
+  - Text is 100% readable from the start with no intrusive blur.
+  - Smooth blinking cursor with character tracking across lines.
+  - Convenient controls below: `↺ Restart [Esc]` and `Next Paragraph [Tab] ➔`.
+- **Section 4 (Practice History)**:
+  - Session history log tracking your completed runs, WPM, accuracy, and timestamps.
+  - `Clear History` button to purge past runs whenever needed.
+- **Completion Modal**:
+  - Clean celebration dialog showing speed, accuracy, elapsed time, raw WPM, errors, and characters typed.
+  - Fast keyboard flow: <kbd>Enter</kbd> / <kbd>Space</kbd> for Next Paragraph, <kbd>Esc</kbd> to practice again, or click outside to dismiss cleanly.
 
 ---
 
-## ⌨️ Command Matrix & Keyboard Shortcuts
+## 🎨 Design & Aesthetic
 
-| Shortcut | Scope | Tactical Action |
+- **Theme**: Soft dark slate (`#0f172a` background, `#1e293b` elevated cards, `#334155` soft borders).
+- **Typography**: Clean sans-serif (`Inter` / system-ui) for all user interface controls, headings, and buttons; crisp monospace (`JetBrains Mono` / `Fira Code`) reserved exclusively for the typing text.
+- **Readability**: Easy on the eyes, generous spacing, zero aggressive blur, and high-contrast color highlights (emerald for correct characters, soft rose for typos).
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Scope | Action |
 | :--- | :--- | :--- |
-| <kbd>/</kbd> | Global | Jump directly to topic search input (`fetch --topic`) |
-| <kbd>Esc</kbd> | Arena | Restart current chunk payload & reset keystream timer |
-| <kbd>Tab</kbd> | Arena | Next chunk payload or replay |
-| <kbd>Enter</kbd> / <kbd>Space</kbd> | Results Modal | Advance to next payload chunk cleanly |
-| <kbd>Esc</kbd> | Results Modal | Retry current chunk immediately |
+| <kbd>/</kbd> | Global | Jump directly to topic search |
+| <kbd>Esc</kbd> | Typing Area | Restart current paragraph & reset timer |
+| <kbd>Tab</kbd> | Typing Area | Next paragraph or repeat |
+| <kbd>Enter</kbd> / <kbd>Space</kbd> | Completion Modal | Advance to next paragraph cleanly |
+| <kbd>Esc</kbd> | Completion Modal | Practice paragraph again immediately |
 | `Any key` | Global | Automatically captures focus into typing stream |
 
 ---

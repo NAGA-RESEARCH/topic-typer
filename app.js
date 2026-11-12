@@ -153,24 +153,20 @@ const TextSanitizer = {
 const WikipediaService = {
   // Curated diverse categories & topics for shuffling and fallback
   curatedTopics: [
-    { title: 'Computer Science', icon: '💻' },
-    { title: 'Space Exploration', icon: '🚀' },
-    { title: 'Linux', icon: '🐧' },
+    { title: 'Science', icon: '🔬' },
     { title: 'History', icon: '📜' },
+    { title: 'Space Exploration', icon: '🚀' },
+    { title: 'Technology', icon: '💻' },
     { title: 'Cinema', icon: '🎬' },
-    { title: 'Quantum Computing', icon: '⚡' },
+    { title: 'Nature', icon: '🌿' },
+    { title: 'Solar System', icon: '🪐' },
+    { title: 'Artificial Intelligence', icon: '🤖' },
     { title: 'Neuroscience', icon: '🧠' },
     { title: 'Ancient Rome', icon: '🏛️' },
-    { title: 'Artificial Intelligence', icon: '🤖' },
-    { title: 'Cybersecurity', icon: '🛡️' },
-    { title: 'Black Hole', icon: '🌌' },
+    { title: 'Dinosaurs', icon: '🦖' },
+    { title: 'Ocean', icon: '🌊' },
+    { title: 'Music', icon: '🎵' },
     { title: 'Philosophy', icon: '📚' },
-    { title: 'James Webb Space Telescope', icon: '🔭' },
-    { title: 'Alan Turing', icon: '🔢' },
-    { title: 'Voyager Program', icon: '🛰️' },
-    { title: 'Solar System', icon: '☀️' },
-    { title: 'Cryptography', icon: '🔐' },
-    { title: 'Machine Learning', icon: '⚙️' },
     { title: 'Renaissance', icon: '🎨' },
     { title: 'Albert Einstein', icon: '💡' }
   ],
@@ -802,6 +798,7 @@ class TopicTyperApp {
   initDOMElements() {
     // Header & Controls
     this.soundToggleBtn = document.getElementById('sound-toggle-btn');
+    this.historyToggleBtn = document.getElementById('history-toggle-btn');
     this.topicForm = document.getElementById('topic-form');
     this.topicInput = document.getElementById('topic-input');
     this.searchSubmitBtn = document.getElementById('search-submit-btn');
@@ -900,8 +897,8 @@ class TopicTyperApp {
     shuffleBtn.type = 'button';
     shuffleBtn.className = 'quick-tag-btn shuffle-btn';
     shuffleBtn.id = 'shuffle-tags-btn';
-    shuffleBtn.title = 'Shuffle Preset Categories';
-    shuffleBtn.textContent = '🔀 Shuffle';
+    shuffleBtn.title = 'Show More Topics';
+    shuffleBtn.textContent = '🔀 More Topics';
     shuffleBtn.addEventListener('click', () => this.renderPresetTags());
     this.quickTagsContainer.appendChild(shuffleBtn);
   }
@@ -941,8 +938,18 @@ class TopicTyperApp {
       const enabled = SoundService.toggle();
       this.soundToggleBtn.classList.toggle('muted', !enabled);
       this.soundToggleBtn.querySelector('.btn-icon').textContent = enabled ? '🔊' : '🔇';
-      this.soundToggleBtn.querySelector('.btn-label').textContent = enabled ? 'SOUND: ON' : 'SOUND: OFF';
+      this.soundToggleBtn.querySelector('.btn-label').textContent = enabled ? 'Sound: On' : 'Sound: Off';
     });
+
+    // History Button (scroll to history section)
+    if (this.historyToggleBtn) {
+      this.historyToggleBtn.addEventListener('click', () => {
+        const historySection = document.getElementById('card-session-logs');
+        if (historySection) {
+          historySection.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    }
 
     // Focus Management
     this.typingSection.addEventListener('click', () => {
@@ -1109,7 +1116,7 @@ class TopicTyperApp {
   }
 
   async loadRandomTopic() {
-    this.showStatus('Rolling random topic from Wikipedia...', 'loading');
+    this.showStatus('Finding an interesting topic for you...', 'loading');
     this.searchSubmitBtn.disabled = true;
     this.randomTopicBtn.disabled = true;
 
@@ -1119,7 +1126,7 @@ class TopicTyperApp {
       this.processLoadedTopic(data);
     } catch (err) {
       console.error(err);
-      this.showStatus('Failed to load random topic. Loading fallback...', 'error');
+      this.showStatus('Could not load random topic. Trying a featured topic...', 'error');
       // Curated fallback
       const fallbackItem = WikipediaService.curatedTopics[Math.floor(Math.random() * WikipediaService.curatedTopics.length)];
       this.loadTopic(fallbackItem.title);
@@ -1130,7 +1137,7 @@ class TopicTyperApp {
   }
 
   async loadTopic(topicQuery) {
-    this.showStatus(`Fetching summary for "${topicQuery}" from Wikipedia REST API...`, 'loading');
+    this.showStatus(`Loading "${topicQuery}" from Wikipedia...`, 'loading');
     this.searchSubmitBtn.disabled = true;
     this.randomTopicBtn.disabled = true;
 
@@ -1179,14 +1186,14 @@ class TopicTyperApp {
     const wordCount = chunkText.split(/\s+/).filter(Boolean).length;
 
     // Update chunk badges
-    this.chunkCounter.textContent = `CHUNK ${this.currentChunkIndex + 1} / ${this.chunks.length}`;
+    this.chunkCounter.textContent = `Paragraph ${this.currentChunkIndex + 1} of ${this.chunks.length}`;
     this.chunkWordCount.textContent = `${wordCount} words`;
 
     // Update navigation buttons
     this.prevChunkBtn.disabled = (this.currentChunkIndex === 0);
     this.nextChunkBtn.disabled = (this.currentChunkIndex === this.chunks.length - 1);
     this.skipChunkBtn.querySelector('span').textContent = 
-      (this.currentChunkIndex === this.chunks.length - 1) ? '↻ REPLAY [Tab]' : '➔ NEXT CHUNK [Tab]';
+      (this.currentChunkIndex === this.chunks.length - 1) ? '↺ Practice Again [Tab]' : 'Next Paragraph [Tab] ➔';
 
     // Load chunk into engine
     this.engine.loadChunk(chunkText);
@@ -1222,17 +1229,17 @@ class TopicTyperApp {
     this.progressPercent.textContent = `${metrics.progressPercent}%`;
     this.progressBarFill.style.width = `${metrics.progressPercent}%`;
 
-    // Update Live Stream Status Badge
+    // Update Progress Status Badge
     if (this.streamStatusBadge) {
       if (metrics.progressPercent === 100) {
-        this.streamStatusBadge.textContent = '[STATUS: BUFFER_COMPLETE]';
-        this.streamStatusBadge.className = 'progress-status status-complete';
+        this.streamStatusBadge.textContent = 'Completed!';
+        this.streamStatusBadge.className = 'progress-status-badge status-complete';
       } else if (metrics.progressPercent > 0) {
-        this.streamStatusBadge.textContent = `[STATUS: DECRYPTING ${metrics.progressPercent}%]`;
-        this.streamStatusBadge.className = 'progress-status status-active';
+        this.streamStatusBadge.textContent = `Typing: ${metrics.progressPercent}%`;
+        this.streamStatusBadge.className = 'progress-status-badge status-active';
       } else {
-        this.streamStatusBadge.textContent = '[STATUS: READY]';
-        this.streamStatusBadge.className = 'progress-status';
+        this.streamStatusBadge.textContent = 'Ready to type';
+        this.streamStatusBadge.className = 'progress-status-badge';
       }
     }
   }
@@ -1269,9 +1276,9 @@ class TopicTyperApp {
     this.resChars.textContent = `${finalMetrics.correctChars} / ${finalMetrics.totalTargetChars}`;
 
     if (this.currentChunkIndex < this.chunks.length - 1) {
-      this.modalNextBtn.querySelector('span').textContent = 'NEXT CHUNK [Enter / Space] ↵';
+      this.modalNextBtn.querySelector('span').textContent = 'Next Paragraph [Enter / Space] ↵';
     } else {
-      this.modalNextBtn.querySelector('span').textContent = 'RESTART TOPIC [Enter / Space] ↵';
+      this.modalNextBtn.querySelector('span').textContent = 'Practice Again [Enter / Space] ↵';
     }
 
     // Record completed run to Session Logs
@@ -1312,7 +1319,7 @@ class TopicTyperApp {
   }
 
   // ==========================================================================
-  // Tactical HUD Additions: Real-Time Clock & Session Logging
+  // Real-Time Clock & Session Logging
   // ==========================================================================
 
   initClock() {
@@ -1334,7 +1341,7 @@ class TopicTyperApp {
     const now = new Date();
     const timeStr = now.toTimeString().split(' ')[0];
     const logItem = {
-      topic: this.currentTopicData?.title || 'Unknown Target',
+      topic: this.currentTopicData?.title || 'Unknown Topic',
       chunkIndex: this.currentChunkIndex + 1,
       totalChunks: this.chunks.length,
       wpm: metrics.wpm,
@@ -1352,12 +1359,12 @@ class TopicTyperApp {
   renderSessionLogs() {
     if (!this.sessionLogsList) return;
     if (this.sessionLogCount) {
-      this.sessionLogCount.textContent = `${this.sessionLogs.length} RUN${this.sessionLogs.length === 1 ? '' : 'S'} LOGGED`;
+      this.sessionLogCount.textContent = `${this.sessionLogs.length} session${this.sessionLogs.length === 1 ? '' : 's'} recorded`;
     }
     if (this.sessionLogs.length === 0) {
       this.sessionLogsList.innerHTML = `
         <div class="empty-log-state">
-          <span class="terminal-dim">[LOG_DAEMON // STANDBY]</span> Telemetry stream initialized. Complete a chunk payload to log performance metrics.
+          <span class="empty-icon">📝</span> No practice runs recorded yet. Type a paragraph above to start tracking your progress!
         </div>
       `;
       return;
@@ -1369,14 +1376,13 @@ class TopicTyperApp {
       row.className = 'session-log-row';
       row.innerHTML = `
         <div class="log-meta">
-          <span class="log-timestamp">[${log.timestamp}]</span>
           <span class="log-topic-name">${log.topic}</span>
-          <span class="log-chunk-badge">CHUNK ${log.chunkIndex}/${log.totalChunks}</span>
+          <span class="log-chunk-badge">Part ${log.chunkIndex} of ${log.totalChunks}</span>
+          <span class="log-timestamp">${log.timestamp}</span>
         </div>
         <div class="log-stats">
           <span class="log-stat-wpm">${log.wpm} <span class="stat-unit-tiny">WPM</span></span>
-          <span class="log-stat-acc">${log.accuracy}% <span class="stat-unit-tiny">ACC</span></span>
-          <span class="log-badge-ok">[EXEC_OK]</span>
+          <span class="log-stat-acc">${log.accuracy}% <span class="stat-unit-tiny">Accuracy</span></span>
         </div>
       `;
       this.sessionLogsList.appendChild(row);
