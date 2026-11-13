@@ -47,7 +47,8 @@
         </a>
       </div>
 
-      <!-- Unified Header Search Bar -->
+      <!-- Conditional Header Search Bar -->
+      {% block navbar_search %}
       <form id="header-search-form" class="header-search-bar" role="search" autocomplete="off" data-practice-url="{% url 'practice' %}">
         <span class="search-icon" aria-hidden="true">🔍</span>
         <input 
@@ -65,6 +66,7 @@
           🎲 Random
         </button>
       </form>
+      {% endblock %}
 
       <div class="header-actions">
         <!-- Multi-Theme Switcher Dropdown -->

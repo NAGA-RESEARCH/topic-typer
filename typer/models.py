@@ -6,6 +6,8 @@ class TypingSession(models.Model):
         ('paragraph', 'Paragraph'),
         ('timed', 'Timed'),
         ('drill', 'Drill'),
+        ('custom', 'Custom'),
+        ('code', 'Code'),
     ]
 
     topic_title = models.CharField(max_length=255)
@@ -16,7 +18,7 @@ class TypingSession(models.Model):
     accuracy = models.FloatField(default=100.0)
     errors_count = models.IntegerField(default=0)
     characters_typed = models.IntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -48,7 +50,7 @@ class KeyStat(models.Model):
 
 
 class CachedTopic(models.Model):
-    title = models.CharField(max_length=255, unique=True)
+    title = models.CharField(max_length=255, unique=True, db_index=True)
     description = models.CharField(max_length=500, blank=True)
     summary_text = models.TextField()
     source_url = models.URLField(max_length=500, blank=True)

@@ -120,7 +120,7 @@ def api_save_session(request):
 
     topic_title = payload.get('topic_title', 'Unknown Topic')[:255]
     mode = payload.get('mode', 'paragraph')
-    if mode not in ['paragraph', 'timed', 'drill']:
+    if mode not in ['paragraph', 'timed', 'drill', 'custom', 'code']:
         mode = 'paragraph'
 
     try:
@@ -232,9 +232,35 @@ def api_analytics(request):
             'errorRate': k.error_rate,
         }
 
+    # All-time Personal Best (PB) WPM
+    best_session = TypingSession.objects.order_by('-wpm').first()
+    personal_best_wpm = round(best_session.wpm, 1) if best_session else 0
+
+    # Consecutive Daily Practice Streak
+    import datetime
+    from django.utils import timezone
+    all_dates = set(TypingSession.objects.dates('created_at', 'day'))
+    today = timezone.localdate()
+    yesterday = today - datetime.timedelta(days=1)
+    daily_streak = 0
+    if today in all_dates:
+        daily_streak = 1
+        check_date = today - datetime.timedelta(days=1)
+        while check_date in all_dates:
+            daily_streak += 1
+            check_date -= datetime.timedelta(days=1)
+    elif yesterday in all_dates:
+        daily_streak = 1
+        check_date = yesterday - datetime.timedelta(days=1)
+        while check_date in all_dates:
+            daily_streak += 1
+            check_date -= datetime.timedelta(days=1)
+
     return JsonResponse({
         'sessions': sessions_list,
         'top_weak_keys': top_weak,
         'all_key_stats': all_keys,
         'total_sessions': TypingSession.objects.count(),
+        'personal_best_wpm': personal_best_wpm,
+        'daily_streak': daily_streak,
     })

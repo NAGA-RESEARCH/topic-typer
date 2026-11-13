@@ -4,15 +4,28 @@
 {% block title %}TopicTyper — Learn While You Type{% endblock %}
 {% block meta_description %}An open-learning typing and reading experiment. Learn interesting Wikipedia topics while improving your typing speed and accuracy. Built by Naga Research Lab.{% endblock %}
 {% block brand_subtitle %}Learn While You Type{% endblock %}
+{% block navbar_search %}{% endblock %}
 
 {% block content %}
 <!-- Streamlined Visual Setup Dashboard -->
 <main id="home-setup-dashboard" class="setup-hero-streamlined">
-  <!-- Minimalist Hero Header -->
+  <!-- Minimalist Hero Header with PB & Daily Streak -->
   <div class="hero-top-strip">
-    <div class="hero-badge-pill">
-      <span class="badge-pulse-dot"></span>
-      <span>Wikipedia Interactive Keystream</span>
+    <div class="hero-top-left">
+      <div class="hero-badge-pill">
+        <span class="badge-pulse-dot"></span>
+        <span>Interactive Keystream</span>
+      </div>
+      <div class="hero-stats-badges">
+        <span class="hero-stat-pill pill-pb" id="home-pb-pill" title="All-Time Personal Best Speed">
+          <span class="pill-icon">🏆</span>
+          <span class="pill-text" id="home-pb-text">PB: -- WPM</span>
+        </span>
+        <span class="hero-stat-pill pill-streak" id="home-streak-pill" title="Consecutive Practice Days">
+          <span class="pill-icon">🔥</span>
+          <span class="pill-text" id="home-streak-text">0 Day Streak</span>
+        </span>
+      </div>
     </div>
     <h1 class="hero-title" aria-label="Master Typing. Learn the Universe.">Master Typing. <span class="hero-title-accent">Learn the Universe.</span></h1>
   </div>
@@ -58,100 +71,184 @@
       </div>
     </div>
 
-    <!-- Visual Curated Topics Grid -->
-    <div class="topics-visual-section">
-      <div class="section-label-row">
-        <span class="section-label-badge">Select Topic</span>
-        <span class="section-label-hint">Or search custom topic below</span>
+    <!-- Content Source Selection Tabs: Wikipedia vs Custom / Code -->
+    <div class="content-source-tabs" role="tablist" aria-label="Content Source Selector">
+      <button type="button" class="source-tab active" id="tab-source-wiki" role="tab" aria-selected="true" data-tab="wiki">
+        <span class="tab-icon">🌌</span>
+        <span class="tab-label">Wikipedia Topics</span>
+      </button>
+      <button type="button" class="source-tab" id="tab-source-custom" role="tab" aria-selected="false" data-tab="custom">
+        <span class="tab-icon">💻</span>
+        <span class="tab-label">Custom / Code</span>
+      </button>
+    </div>
+
+    <!-- Pane A: Curated Wikipedia Topics Grid & Search -->
+    <div id="panel-source-wiki" class="source-panel">
+      <div class="topics-visual-section">
+        <div class="section-label-row">
+          <span class="section-label-badge">Select Topic</span>
+          <span class="section-label-hint">Or search custom topic below</span>
+        </div>
+
+        <div class="topic-cards-grid visual-grid" id="curated-topic-grid">
+          <div class="topic-card" data-topic="James Webb Space Telescope" title="James Webb Space Telescope">
+            <span class="topic-card-icon">🌌</span>
+            <div class="topic-card-body">
+              <span class="topic-card-title">James Webb</span>
+              <span class="topic-card-tag">Astronomy</span>
+            </div>
+          </div>
+
+          <div class="topic-card selected" data-topic="Quantum Mechanics" title="Quantum Mechanics">
+            <span class="topic-card-icon">⚛️</span>
+            <div class="topic-card-body">
+              <span class="topic-card-title">Quantum</span>
+              <span class="topic-card-tag">Physics</span>
+            </div>
+          </div>
+
+          <div class="topic-card" data-topic="Artificial Intelligence" title="Artificial Intelligence">
+            <span class="topic-card-icon">🤖</span>
+            <div class="topic-card-body">
+              <span class="topic-card-title">AI &amp; Neural Nets</span>
+              <span class="topic-card-tag">Computing</span>
+            </div>
+          </div>
+
+          <div class="topic-card" data-topic="Ancient Rome" title="Ancient Rome">
+            <span class="topic-card-icon">🏛️</span>
+            <div class="topic-card-body">
+              <span class="topic-card-title">Ancient Rome</span>
+              <span class="topic-card-tag">History</span>
+            </div>
+          </div>
+
+          <div class="topic-card" data-topic="Biodiversity" title="Biodiversity">
+            <span class="topic-card-icon">🌿</span>
+            <div class="topic-card-body">
+              <span class="topic-card-title">Biodiversity</span>
+              <span class="topic-card-tag">Nature</span>
+            </div>
+          </div>
+
+          <div class="topic-card" data-topic="Cognitive Science" title="Cognitive Science">
+            <span class="topic-card-icon">🧠</span>
+            <div class="topic-card-body">
+              <span class="topic-card-title">Cognitive Science</span>
+              <span class="topic-card-tag">Mind</span>
+            </div>
+          </div>
+
+          <div class="topic-card" data-topic="Renaissance" title="Renaissance">
+            <span class="topic-card-icon">🎨</span>
+            <div class="topic-card-body">
+              <span class="topic-card-title">Renaissance</span>
+              <span class="topic-card-tag">Art</span>
+            </div>
+          </div>
+
+          <div class="topic-card" data-topic="random" title="Surprise Me (Random Topic)">
+            <span class="topic-card-icon">🎲</span>
+            <div class="topic-card-body">
+              <span class="topic-card-title">Surprise Me</span>
+              <span class="topic-card-tag">Random</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom Topic Search Box -->
+        <div class="custom-topic-box visual-search-box">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input 
+            type="text" 
+            id="custom-topic-input" 
+            class="custom-topic-input" 
+            placeholder="Search any Wikipedia topic (e.g., Solar System, Neuroscience, Black Holes)..." 
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <span class="enter-badge">Enter ↵</span>
+        </div>
       </div>
 
-      <div class="topic-cards-grid visual-grid" id="curated-topic-grid">
-        <div class="topic-card" data-topic="James Webb Space Telescope" title="James Webb Space Telescope">
-          <span class="topic-card-icon">🌌</span>
-          <div class="topic-card-body">
-            <span class="topic-card-title">James Webb</span>
-            <span class="topic-card-tag">Astronomy</span>
-          </div>
-        </div>
-
-        <div class="topic-card selected" data-topic="Quantum Mechanics" title="Quantum Mechanics">
-          <span class="topic-card-icon">⚛️</span>
-          <div class="topic-card-body">
-            <span class="topic-card-title">Quantum</span>
-            <span class="topic-card-tag">Physics</span>
-          </div>
-        </div>
-
-        <div class="topic-card" data-topic="Artificial Intelligence" title="Artificial Intelligence">
-          <span class="topic-card-icon">🤖</span>
-          <div class="topic-card-body">
-            <span class="topic-card-title">AI &amp; Neural Nets</span>
-            <span class="topic-card-tag">Computing</span>
-          </div>
-        </div>
-
-        <div class="topic-card" data-topic="Ancient Rome" title="Ancient Rome">
-          <span class="topic-card-icon">🏛️</span>
-          <div class="topic-card-body">
-            <span class="topic-card-title">Ancient Rome</span>
-            <span class="topic-card-tag">History</span>
-          </div>
-        </div>
-
-        <div class="topic-card" data-topic="Biodiversity" title="Biodiversity">
-          <span class="topic-card-icon">🌿</span>
-          <div class="topic-card-body">
-            <span class="topic-card-title">Biodiversity</span>
-            <span class="topic-card-tag">Nature</span>
-          </div>
-        </div>
-
-        <div class="topic-card" data-topic="Cognitive Science" title="Cognitive Science">
-          <span class="topic-card-icon">🧠</span>
-          <div class="topic-card-body">
-            <span class="topic-card-title">Cognitive Science</span>
-            <span class="topic-card-tag">Mind</span>
-          </div>
-        </div>
-
-        <div class="topic-card" data-topic="Renaissance" title="Renaissance">
-          <span class="topic-card-icon">🎨</span>
-          <div class="topic-card-body">
-            <span class="topic-card-title">Renaissance</span>
-            <span class="topic-card-tag">Art</span>
-          </div>
-        </div>
-
-        <div class="topic-card" data-topic="random" title="Surprise Me (Random Topic)">
-          <span class="topic-card-icon">🎲</span>
-          <div class="topic-card-body">
-            <span class="topic-card-title">Surprise Me</span>
-            <span class="topic-card-tag">Random</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Custom Topic Search Box -->
-      <div class="custom-topic-box visual-search-box">
-        <span class="search-icon" aria-hidden="true">🔍</span>
-        <input 
-          type="text" 
-          id="custom-topic-input" 
-          class="custom-topic-input" 
-          placeholder="Search any Wikipedia topic (e.g., Solar System, Neuroscience, Black Holes)..." 
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <span class="enter-badge">Enter ↵</span>
+      <!-- Start Launch Row -->
+      <div class="start-cta-row visual-cta-row">
+        <a href="{% url 'practice' %}" id="start-practice-btn" class="btn btn-primary btn-hero btn-glow">
+          <span class="cta-pulse-icon">⚡</span>
+          <span>Launch Practice Arena ➔</span>
+        </a>
       </div>
     </div>
 
-    <!-- Start Launch Row -->
-    <div class="start-cta-row visual-cta-row">
-      <a href="{% url 'practice' %}" id="start-practice-btn" class="btn btn-primary btn-hero btn-glow">
-        <span class="cta-pulse-icon">⚡</span>
-        <span>Launch Practice Arena ➔</span>
-      </a>
+    <!-- Pane B: Custom Text & Code Snippet Mode -->
+    <div id="panel-source-custom" class="source-panel hidden">
+      <div class="custom-source-wrapper">
+        <!-- Subtabs: Paste Text vs Code Snippets -->
+        <div class="custom-subtabs-row">
+          <button type="button" class="custom-subtab-btn active" id="subtab-btn-text" data-subtab="text">
+            <span>📝 Paste Custom Text</span>
+          </button>
+          <button type="button" class="custom-subtab-btn" id="subtab-btn-code" data-subtab="code">
+            <span>💻 Code Snippets</span>
+          </button>
+        </div>
+
+        <!-- Sub-pane 1: Paste Text -->
+        <div id="subpane-text" class="custom-subpane">
+          <div class="custom-input-card">
+            <textarea 
+              id="custom-text-input" 
+              class="custom-textarea" 
+              rows="6" 
+              placeholder="Paste study notes, essays, or any custom text here to practice typing..."
+              spellcheck="false"
+            ></textarea>
+            <div class="custom-input-footer">
+              <div class="text-stats-counter">
+                <span id="custom-words-count">0 words</span>
+                <span class="stat-sep">•</span>
+                <span id="custom-chars-count">0 characters</span>
+              </div>
+              <button type="button" id="start-custom-text-btn" class="btn btn-primary btn-sm" disabled>
+                <span>Practice Custom Text ➔</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-pane 2: Code Snippets -->
+        <div id="subpane-code" class="custom-subpane hidden">
+          <div class="code-practice-card">
+            <div class="code-controls-header">
+              <div class="lang-pill-selector">
+                <span class="control-label">Language:</span>
+                <div class="lang-pills" role="radiogroup" aria-label="Code language">
+                  <button type="button" class="lang-pill active" data-lang="python">Python</button>
+                  <button type="button" class="lang-pill" data-lang="javascript">JavaScript</button>
+                  <button type="button" class="lang-pill" data-lang="sql">SQL</button>
+                </div>
+              </div>
+              <div class="snippet-chips-row" id="snippet-chips-container">
+                <!-- Dynamically populated snippet selector chips -->
+              </div>
+            </div>
+
+            <div class="code-preview-container">
+              <div class="code-preview-topbar">
+                <div class="code-file-meta">
+                  <span class="code-lang-icon" id="code-lang-icon">🐍</span>
+                  <span class="code-file-title" id="code-file-title">fibonacci.py</span>
+                </div>
+                <button type="button" id="start-code-practice-btn" class="btn btn-primary btn-sm">
+                  <span>Practice Code ➔</span>
+                </button>
+              </div>
+              <pre class="code-preview-body"><code id="code-preview-content"></code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </main>
