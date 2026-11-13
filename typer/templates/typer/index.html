@@ -1,0 +1,231 @@
+{% extends 'typer/base.html' %}
+{% load static %}
+
+{% block title %}TopicTyper — Learn While You Type{% endblock %}
+{% block meta_description %}An open-learning typing and reading experiment. Learn interesting Wikipedia topics while improving your typing speed and accuracy. Built by Naga Research Lab.{% endblock %}
+{% block brand_subtitle %}Learn While You Type{% endblock %}
+
+{% block content %}
+<!-- Streamlined Visual Setup Dashboard -->
+<main id="home-setup-dashboard" class="setup-hero-streamlined">
+  <!-- Minimalist Hero Header -->
+  <div class="hero-top-strip">
+    <div class="hero-badge-pill">
+      <span class="badge-pulse-dot"></span>
+      <span>Wikipedia Interactive Keystream</span>
+    </div>
+    <h1 class="hero-title" aria-label="Master Typing. Learn the Universe.">Master Typing. <span class="hero-title-accent">Learn the Universe.</span></h1>
+  </div>
+
+  <div class="setup-card visual-setup-card">
+    <!-- Top Action Strip: Mode Segmented Control + Prominent Weak Keys CTA -->
+    <div class="setup-control-strip">
+      <div class="mode-control-group">
+        <div class="mode-segmented-control" role="tablist" aria-label="Practice Mode Selector">
+          <button type="button" class="mode-tab selected" data-mode="paragraph" id="mode-card-paragraph" role="tab" aria-selected="true" title="Complete Paragraph Mode">
+            <span class="tab-icon">📖</span>
+            <span class="tab-label">Paragraph</span>
+          </button>
+          <button type="button" class="mode-tab" data-mode="timed" id="mode-card-timed" role="tab" aria-selected="false" title="Timed Sprint Mode">
+            <span class="tab-icon">⏱️</span>
+            <span class="tab-label">Timed Sprint</span>
+          </button>
+        </div>
+
+        <!-- Timed Mode Duration Selector (revealed when timed mode is active) -->
+        <div id="timed-duration-selector" class="timed-duration-selector hidden">
+          <div class="duration-pills">
+            <button type="button" class="duration-pill" data-duration="15">15s</button>
+            <button type="button" class="duration-pill" data-duration="30">30s</button>
+            <button type="button" class="duration-pill selected" data-duration="60">60s</button>
+            <button type="button" class="duration-pill" data-duration="120">120s</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Prominent Practice Weak Keys CTA (Right beside mode selector!) -->
+      <div class="weak-drill-quick-cta">
+        <button type="button" id="practice-weak-keys-top-btn" class="btn btn-weak-drill" title="Practice custom drill targeting your weak letters">
+          <span class="drill-icon">🎯</span>
+          <span class="drill-title">Practice Weak Keys</span>
+          <div id="quick-weak-chips" class="quick-weak-chips" aria-label="Weak keys target">
+            <span class="chip-key">E</span>
+            <span class="chip-key">R</span>
+            <span class="chip-key">T</span>
+          </div>
+          <span class="drill-arrow">➔</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Visual Curated Topics Grid -->
+    <div class="topics-visual-section">
+      <div class="section-label-row">
+        <span class="section-label-badge">Select Topic</span>
+        <span class="section-label-hint">Or search custom topic below</span>
+      </div>
+
+      <div class="topic-cards-grid visual-grid" id="curated-topic-grid">
+        <div class="topic-card" data-topic="James Webb Space Telescope" title="James Webb Space Telescope">
+          <span class="topic-card-icon">🌌</span>
+          <div class="topic-card-body">
+            <span class="topic-card-title">James Webb</span>
+            <span class="topic-card-tag">Astronomy</span>
+          </div>
+        </div>
+
+        <div class="topic-card selected" data-topic="Quantum Mechanics" title="Quantum Mechanics">
+          <span class="topic-card-icon">⚛️</span>
+          <div class="topic-card-body">
+            <span class="topic-card-title">Quantum</span>
+            <span class="topic-card-tag">Physics</span>
+          </div>
+        </div>
+
+        <div class="topic-card" data-topic="Artificial Intelligence" title="Artificial Intelligence">
+          <span class="topic-card-icon">🤖</span>
+          <div class="topic-card-body">
+            <span class="topic-card-title">AI &amp; Neural Nets</span>
+            <span class="topic-card-tag">Computing</span>
+          </div>
+        </div>
+
+        <div class="topic-card" data-topic="Ancient Rome" title="Ancient Rome">
+          <span class="topic-card-icon">🏛️</span>
+          <div class="topic-card-body">
+            <span class="topic-card-title">Ancient Rome</span>
+            <span class="topic-card-tag">History</span>
+          </div>
+        </div>
+
+        <div class="topic-card" data-topic="Biodiversity" title="Biodiversity">
+          <span class="topic-card-icon">🌿</span>
+          <div class="topic-card-body">
+            <span class="topic-card-title">Biodiversity</span>
+            <span class="topic-card-tag">Nature</span>
+          </div>
+        </div>
+
+        <div class="topic-card" data-topic="Cognitive Science" title="Cognitive Science">
+          <span class="topic-card-icon">🧠</span>
+          <div class="topic-card-body">
+            <span class="topic-card-title">Cognitive Science</span>
+            <span class="topic-card-tag">Mind</span>
+          </div>
+        </div>
+
+        <div class="topic-card" data-topic="Renaissance" title="Renaissance">
+          <span class="topic-card-icon">🎨</span>
+          <div class="topic-card-body">
+            <span class="topic-card-title">Renaissance</span>
+            <span class="topic-card-tag">Art</span>
+          </div>
+        </div>
+
+        <div class="topic-card" data-topic="random" title="Surprise Me (Random Topic)">
+          <span class="topic-card-icon">🎲</span>
+          <div class="topic-card-body">
+            <span class="topic-card-title">Surprise Me</span>
+            <span class="topic-card-tag">Random</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Topic Search Box -->
+      <div class="custom-topic-box visual-search-box">
+        <span class="search-icon" aria-hidden="true">🔍</span>
+        <input 
+          type="text" 
+          id="custom-topic-input" 
+          class="custom-topic-input" 
+          placeholder="Search any Wikipedia topic (e.g., Solar System, Neuroscience, Black Holes)..." 
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <span class="enter-badge">Enter ↵</span>
+      </div>
+    </div>
+
+    <!-- Start Launch Row -->
+    <div class="start-cta-row visual-cta-row">
+      <a href="{% url 'practice' %}" id="start-practice-btn" class="btn btn-primary btn-hero btn-glow">
+        <span class="cta-pulse-icon">⚡</span>
+        <span>Launch Practice Arena ➔</span>
+      </a>
+    </div>
+  </div>
+</main>
+
+<!-- Performance Analytics & Practice History -->
+<section class="analytics-section" aria-label="Typing Performance Analytics">
+  <div class="analytics-grid">
+    <!-- Chart Card -->
+    <div class="analytics-card chart-card">
+      <div class="card-header-row">
+        <div class="card-title-group">
+          <span class="card-category-tag">Performance Curve</span>
+          <h3 class="analytics-card-title">Speed Progression (WPM)</h3>
+        </div>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="legend-dot color-sky"></span> Session</span>
+          <span class="legend-item"><span class="legend-line color-emerald"></span> Trend</span>
+        </div>
+      </div>
+      <div class="chart-container" id="wpm-chart-container">
+        <canvas id="wpm-trend-canvas" width="680" height="210"></canvas>
+        <div id="chart-tooltip" class="chart-tooltip hidden"></div>
+        <div id="chart-empty-state" class="chart-empty-state hidden">
+          <span class="empty-icon">📈</span>
+          <p>No practice sessions recorded yet. Start practicing above to visualize your speed curve!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weak Keys & Heatmap Card -->
+    <div class="analytics-card weak-keys-card">
+      <div class="card-header-row">
+        <div class="card-title-group">
+          <span class="card-category-tag">Accuracy Diagnostics</span>
+          <h3 class="analytics-card-title">Weak Keys Heatmap</h3>
+        </div>
+        <button type="button" id="practice-weak-keys-btn" class="btn btn-secondary btn-sm" title="Generate custom drill targeting missed letters">
+          <span>🎯 Drill Weak Keys</span>
+        </button>
+      </div>
+
+      <div class="weak-keys-content">
+        <div class="weak-keys-summary">
+          <span class="summary-label">Focus Areas:</span>
+          <div id="top-weak-keys-list" class="top-weak-keys-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Visual QWERTY Mini Heatmap -->
+        <div id="keyboard-heatmap" class="keyboard-heatmap" aria-label="Keyboard accuracy heatmap">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Session History Journal -->
+    <div class="analytics-card session-history-card" id="card-session-logs">
+      <div class="card-header-row">
+        <div class="card-title-group">
+          <span class="card-category-tag">Journal</span>
+          <h3 class="analytics-card-title">Recent Runs</h3>
+        </div>
+        <div class="history-actions">
+          <span id="session-log-count" class="session-log-count">0 sessions recorded</span>
+          <button type="button" id="clear-logs-btn" class="btn btn-secondary btn-sm" title="Clear all local session records">
+            <span>Reset History</span>
+          </button>
+        </div>
+      </div>
+      <div id="session-logs-list" class="session-logs-list">
+        <!-- Dynamically populated -->
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

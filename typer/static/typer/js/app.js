@@ -150,6 +150,345 @@ const TextSanitizer = {
 // ============================================================================
 // 2. WIKIPEDIA API SERVICE (WITH RANDOM SUMMARY INTEGRATION)
 // ============================================================================
+
+function getCsrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  if (meta && meta.getAttribute('content')) {
+    return meta.getAttribute('content');
+  }
+  const cookies = document.cookie ? document.cookie.split(';') : [];
+  for (let c of cookies) {
+    const trimmed = c.trim();
+    if (trimmed.startsWith('csrftoken=')) {
+      return decodeURIComponent(trimmed.substring(10));
+    }
+  }
+  return '';
+}
+
+
+// ============================================================================
+// 1.5 THEME SERVICE & THEME-AWARE AMBIENT ENGINE
+// ============================================================================
+const ThemeService = {
+  THEMES: ['midnight', 'coding', 'hacking', 'funny'],
+  currentTheme: 'midnight',
+
+  init() {
+    this.currentTheme = localStorage.getItem('topictyper_theme') || 'midnight';
+    if (!this.THEMES.includes(this.currentTheme)) {
+      this.currentTheme = 'midnight';
+    }
+    this.applyTheme(this.currentTheme, false);
+    this.bindEvents();
+  },
+
+  applyTheme(theme, save = true) {
+    if (!this.THEMES.includes(theme)) theme = 'midnight';
+    this.currentTheme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    if (save) {
+      try {
+        localStorage.setItem('topictyper_theme', theme);
+      } catch (e) {}
+    }
+    this.updateUI();
+    window.dispatchEvent(new CustomEvent('topictyper:themechange', { detail: { theme } }));
+  },
+
+  updateUI() {
+    const activeLabelEl = document.getElementById('theme-active-name');
+    if (activeLabelEl) {
+      const names = {
+        midnight: 'Midnight',
+        coding: 'Coding IDE',
+        hacking: 'Hacking',
+        funny: 'Arcade'
+      };
+      activeLabelEl.textContent = names[this.currentTheme] || 'Theme';
+    }
+
+    const options = document.querySelectorAll('.theme-option-btn');
+    options.forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.theme === this.currentTheme);
+    });
+  },
+
+  bindEvents() {
+    const menuBtn = document.getElementById('theme-menu-btn');
+    const dropdownMenu = document.getElementById('theme-dropdown-menu');
+
+    if (menuBtn && dropdownMenu) {
+      menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = dropdownMenu.classList.contains('hidden');
+        dropdownMenu.classList.toggle('hidden', !isHidden);
+        menuBtn.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!menuBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+          dropdownMenu.classList.add('hidden');
+          menuBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !dropdownMenu.classList.contains('hidden')) {
+          dropdownMenu.classList.add('hidden');
+          menuBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    const options = document.querySelectorAll('.theme-option-btn');
+    options.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const selected = btn.dataset.theme;
+        this.applyTheme(selected);
+        if (dropdownMenu) dropdownMenu.classList.add('hidden');
+      });
+    });
+  }
+};
+
+const AmbientEngine = {
+  canvas: null,
+  ctx: null,
+  width: 0,
+  height: 0,
+  animId: null,
+  theme: 'midnight',
+  particles: [],
+  matrixColumns: [],
+
+  init() {
+    this.canvas = document.getElementById('ambient-canvas');
+    if (!this.canvas) return;
+    this.ctx = this.canvas.getContext('2d');
+    if (!this.ctx) return;
+
+    this.theme = document.documentElement.getAttribute('data-theme') || 'midnight';
+    this.resize();
+    this.setupThemeParticles();
+
+    window.addEventListener('resize', () => {
+      this.resize();
+      this.setupThemeParticles();
+    });
+
+    window.addEventListener('topictyper:themechange', (e) => {
+      this.theme = e.detail?.theme || 'midnight';
+      this.setupThemeParticles();
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (this.animId) cancelAnimationFrame(this.animId);
+        this.animId = null;
+      } else {
+        this.start();
+      }
+    });
+
+    this.start();
+  },
+
+  resize() {
+    if (!this.canvas) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+    this.canvas.width = this.width * dpr;
+    this.canvas.height = this.height * dpr;
+    this.ctx.resetTransform?.();
+    this.ctx.scale(dpr, dpr);
+  },
+
+  setupThemeParticles() {
+    this.particles = [];
+    this.matrixColumns = [];
+
+    if (this.theme === 'hacking') {
+      // Matrix rain columns
+      const colWidth = 20;
+      const colCount = Math.floor(this.width / colWidth);
+      for (let i = 0; i < colCount; i++) {
+        this.matrixColumns.push({
+          x: i * colWidth,
+          y: Math.random() * -this.height,
+          speed: 2.2 + Math.random() * 3.5,
+          length: Math.floor(10 + Math.random() * 18)
+        });
+      }
+    } else if (this.theme === 'coding') {
+      // Syntax tokens
+      const tokens = ['{ }', '< >', '=>', '01', '//', 'fn()', '++', '&&', '::', 'const', 'return'];
+      const count = Math.min(26, Math.floor(this.width / 50));
+      for (let i = 0; i < count; i++) {
+        this.particles.push({
+          text: tokens[Math.floor(Math.random() * tokens.length)],
+          x: Math.random() * this.width,
+          y: Math.random() * this.height,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: -0.3 - Math.random() * 0.5,
+          alpha: 0.12 + Math.random() * 0.22,
+          size: 13 + Math.random() * 8
+        });
+      }
+    } else if (this.theme === 'funny') {
+      // Arcade confetti
+      const shapes = ['★', '◆', '●', '▲', '✦'];
+      const colors = ['#FF6B6B', '#FFD93D', '#4CC9F0', '#9D4EDD', '#A6E3A1'];
+      const count = Math.min(32, Math.floor(this.width / 45));
+      for (let i = 0; i < count; i++) {
+        this.particles.push({
+          shape: shapes[Math.floor(Math.random() * shapes.length)],
+          color: colors[Math.floor(Math.random() * colors.length)],
+          x: Math.random() * this.width,
+          y: Math.random() * this.height,
+          vx: (Math.random() - 0.5) * 0.6,
+          vy: -0.4 - Math.random() * 0.6,
+          rot: Math.random() * Math.PI * 2,
+          vrot: (Math.random() - 0.5) * 0.03,
+          size: 14 + Math.random() * 10,
+          alpha: 0.20 + Math.random() * 0.25
+        });
+      }
+    } else {
+      // Midnight constellation nodes
+      const count = Math.min(36, Math.floor(this.width / 40));
+      for (let i = 0; i < count; i++) {
+        this.particles.push({
+          x: Math.random() * this.width,
+          y: Math.random() * this.height,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: (Math.random() - 0.5) * 0.5,
+          radius: 1.5 + Math.random() * 2.5,
+          alpha: 0.2 + Math.random() * 0.35
+        });
+      }
+    }
+  },
+
+  start() {
+    if (this.animId) return;
+    const loop = () => {
+      this.draw();
+      this.animId = requestAnimationFrame(loop);
+    };
+    this.animId = requestAnimationFrame(loop);
+  },
+
+  draw() {
+    if (!this.ctx || !this.width || !this.height) return;
+    this.ctx.clearRect(0, 0, this.width, this.height);
+
+    if (this.theme === 'hacking') {
+      this.drawMatrixRain();
+    } else if (this.theme === 'coding') {
+      this.drawSyntaxTokens();
+    } else if (this.theme === 'funny') {
+      this.drawConfetti();
+    } else {
+      this.drawConstellation();
+    }
+  },
+
+  drawMatrixRain() {
+    const chars = '0123456789ABCDEF$#@*<>~¥§';
+    this.ctx.font = '13px monospace';
+
+    for (const col of this.matrixColumns) {
+      col.y += col.speed;
+      if (col.y > this.height + col.length * 16) {
+        col.y = -col.length * 16;
+        col.speed = 2.2 + Math.random() * 3.5;
+      }
+
+      for (let j = 0; j < col.length; j++) {
+        const charY = col.y - j * 16;
+        if (charY < -16 || charY > this.height) continue;
+
+        const isLead = (j === 0);
+        const alpha = isLead ? 0.85 : Math.max(0.04, 0.26 * (1 - j / col.length));
+        this.ctx.fillStyle = isLead ? '#FFFFFF' : `rgba(0, 255, 65, ${alpha})`;
+
+        const glyph = chars[Math.floor((col.x + j * 7 + Date.now() / 200) % chars.length)];
+        this.ctx.fillText(glyph, col.x, charY);
+      }
+    }
+  },
+
+  drawSyntaxTokens() {
+    this.ctx.font = '14px JetBrains Mono, monospace';
+    for (const p of this.particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.y < -30) p.y = this.height + 20;
+      if (p.x < -30) p.x = this.width + 20;
+      if (p.x > this.width + 30) p.x = -20;
+
+      this.ctx.fillStyle = `rgba(203, 166, 247, ${p.alpha})`;
+      this.ctx.fillText(p.text, p.x, p.y);
+    }
+  },
+
+  drawConfetti() {
+    for (const p of this.particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.vrot;
+
+      if (p.y < -30) p.y = this.height + 20;
+      if (p.x < -30) p.x = this.width + 20;
+      if (p.x > this.width + 30) p.x = -20;
+
+      this.ctx.save();
+      this.ctx.translate(p.x, p.y);
+      this.ctx.rotate(p.rot);
+      this.ctx.fillStyle = p.color;
+      this.ctx.globalAlpha = p.alpha;
+      this.ctx.font = `${p.size}px sans-serif`;
+      this.ctx.fillText(p.shape, -p.size / 2, p.size / 2);
+      this.ctx.restore();
+    }
+  },
+
+  drawConstellation() {
+    this.ctx.lineWidth = 0.8;
+    for (let i = 0; i < this.particles.length; i++) {
+      for (let j = i + 1; j < this.particles.length; j++) {
+        const dx = this.particles[i].x - this.particles[j].x;
+        const dy = this.particles[i].y - this.particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 110) {
+          const lineAlpha = (1 - dist / 110) * 0.16;
+          this.ctx.strokeStyle = `rgba(56, 189, 248, ${lineAlpha})`;
+          this.ctx.beginPath();
+          this.ctx.moveTo(this.particles[i].x, this.particles[i].y);
+          this.ctx.lineTo(this.particles[j].x, this.particles[j].y);
+          this.ctx.stroke();
+        }
+      }
+    }
+
+    for (const p of this.particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.x < 0 || p.x > this.width) p.vx *= -1;
+      if (p.y < 0 || p.y > this.height) p.vy *= -1;
+
+      this.ctx.fillStyle = `rgba(56, 189, 248, ${p.alpha})`;
+      this.ctx.beginPath();
+      this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+  }
+};
+
 const WikipediaService = {
   // Curated diverse categories & topics for shuffling and fallback
   curatedTopics: [
@@ -201,10 +540,29 @@ const WikipediaService = {
     const rawQuery = topicQuery.trim();
     if (!rawQuery) throw new Error('Please enter a valid topic name.');
 
+    // 1. Django SQLite Backend REST API (/api/topic/?q=...)
+    try {
+      const apiRes = await fetch(`/api/topic/?q=${encodeURIComponent(rawQuery)}`);
+      if (apiRes.ok) {
+        const data = await apiRes.json();
+        if (data.extract && data.extract.trim().length > 0) {
+          return {
+            title: data.title,
+            description: data.description || 'Wikipedia Article Summary',
+            extract: data.extract,
+            url: data.source_url || `https://en.wikipedia.org/wiki/${encodeURIComponent(data.title)}`,
+            thumbnail: null
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Backend /api/topic/ fetch failed, attempting client Wikipedia fallback...', err);
+    }
+
     const headers = { 'Api-User-Agent': 'TopicTyper/1.0 (typing-practice-app)' };
     const formattedTitle = rawQuery.replace(/\s+/g, '_');
 
-    // 1. Direct REST Summary Request
+    // 2. Direct REST Summary Request
     try {
       const directUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(formattedTitle)}`;
       const res = await fetch(directUrl, { headers });
@@ -309,6 +667,25 @@ const WikipediaService = {
    * Falls back to a random topic from the curated interesting pool.
    */
   async fetchRandomTopicSummary() {
+    // 1. Django SQLite Backend Random Topic API (/api/topic/random/)
+    try {
+      const apiRes = await fetch('/api/topic/random/');
+      if (apiRes.ok) {
+        const data = await apiRes.json();
+        if (data.extract && data.extract.trim().length > 0) {
+          return {
+            title: data.title,
+            description: data.description || 'Wikipedia Article Summary',
+            extract: data.extract,
+            url: data.source_url || `https://en.wikipedia.org/wiki/${encodeURIComponent(data.title)}`,
+            thumbnail: null
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Backend /api/topic/random/ fetch failed, falling back to direct Wikipedia...', err);
+    }
+
     const headers = { 'Api-User-Agent': 'TopicTyper/1.0 (typing-practice-app)' };
 
     // Try Wikipedia's official random summary endpoint
@@ -437,6 +814,38 @@ const AnalyticsService = {
     return sessions;
   },
 
+  async saveSessionToServer(sessionData, keyStats = {}) {
+    const payload = {
+      topic_title: sessionData.topic || 'Unknown Topic',
+      mode: sessionData.mode || 'paragraph',
+      duration_seconds: sessionData.elapsedSeconds || sessionData.duration || 0,
+      wpm: sessionData.wpm || 0,
+      raw_wpm: sessionData.rawWpm || 0,
+      accuracy: sessionData.accuracy || 100,
+      errors_count: sessionData.errorCount || sessionData.errors || 0,
+      characters_typed: sessionData.charactersTyped || sessionData.characters || 0,
+      key_stats: keyStats
+    };
+
+    try {
+      const res = await fetch('/api/session/save/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json;
+      }
+    } catch (err) {
+      console.warn('POST /api/session/save/ failed, saved to localStorage fallback:', err);
+    }
+    return null;
+  },
+
   clearSessions() {
     try {
       localStorage.removeItem(this.SESSIONS_KEY);
@@ -533,6 +942,57 @@ const AnalyticsService = {
   // --------------------------------------------------------------------------
   // Custom 40-Word Weak Keys Drill Generator
   // --------------------------------------------------------------------------
+    generateWeakDrillWithKeys(targetLetters = ['e', 'r', 't'], targetWordCount = 40) {
+    if (!targetLetters || targetLetters.length === 0) {
+      targetLetters = ['e', 'r', 't'];
+    }
+    const dictionary = [
+      'quantum', 'puzzle', 'breeze', 'galaxy', 'explore', 'oxygen', 'matrix', 'zenith',
+      'sphinx', 'crystal', 'hazard', 'velvet', 'balance', 'dynamic', 'vortex', 'quartz',
+      'subtle', 'symbol', 'copper', 'liquid', 'knight', 'trophy', 'memory', 'binary',
+      'beacon', 'anchor', 'sphere', 'mystic', 'frozen', 'canyon', 'silver', 'cosmic',
+      'jungle', 'dragon', 'mirror', 'horizon', 'shield', 'voyage', 'summit', 'kernel',
+      'temple', 'orbit', 'spark', 'weapon', 'cipher', 'stream', 'rocket', 'vector',
+      'forest', 'marble', 'island', 'falcon', 'engine', 'plasma', 'shadow', 'planet',
+      'system', 'wisdom', 'energy', 'bridge', 'method', 'nature', 'public', 'aspect',
+      'packet', 'bypass', 'zebra', 'plaza', 'boxing', 'problem', 'project', 'syntax',
+      'sample', 'complex', 'expert', 'prefix', 'blaze', 'bronze', 'pixel', 'flight',
+      'impact', 'volume', 'fabric', 'vibrant', 'quick', 'yellow', 'brave', 'climb',
+      'depth', 'flame', 'globe', 'heavy', 'ivory', 'jewel', 'kneel', 'lemon', 'magic',
+      'noble', 'ocean', 'pride', 'quest', 'river', 'stone', 'tiger', 'unity', 'valor',
+      'wheel', 'youth', 'zebra', 'amber', 'bloom', 'charm', 'drift', 'eagle', 'frost',
+      'glory', 'haven', 'inlet', 'jolly', 'karma', 'lunar', 'merit', 'nexus', 'oasis',
+      'pulse', 'realm', 'solar', 'track', 'urban', 'vigor', 'wave', 'yield', 'zone'
+    ];
+
+    const scoredWords = dictionary.map(word => {
+      let score = 0;
+      for (const char of word) {
+        if (targetLetters.includes(char)) score += 3;
+      }
+      return { word, score };
+    });
+
+    scoredWords.sort((a, b) => b.score - a.score || Math.random() - 0.5);
+    const chosen = [];
+    let idx = 0;
+    while (chosen.length < targetWordCount) {
+      if (idx < scoredWords.length) {
+        chosen.push(scoredWords[idx].word);
+        idx++;
+      } else {
+        idx = 0;
+        chosen.push(scoredWords[Math.floor(Math.random() * Math.min(25, scoredWords.length))].word);
+      }
+    }
+    const shuffledWords = chosen.sort(() => 0.5 - Math.random());
+    return {
+      weakKeys: targetLetters,
+      wordsText: shuffledWords.join(' '),
+      wordCount: targetWordCount
+    };
+  },
+
   generateWeakDrill(targetWordCount = 40) {
     const topWeak = this.getWeakKeys(5);
     let targetLetters = [];
@@ -615,7 +1075,7 @@ const AnalyticsService = {
     if (!ctx) return;
 
     // Filter to last 15 completed sessions (display in chronological order: oldest -> latest)
-    const recentSessions = [...sessions].reverse().slice(-15);
+    const recentSessions = options.isChronological ? [...sessions].slice(-15) : [...sessions].reverse().slice(-15);
     const count = recentSessions.length;
 
     // High-DPI Canvas scaling
@@ -886,9 +1346,11 @@ const AnalyticsService = {
   // --------------------------------------------------------------------------
   // Keyboard Heatmap & Weak Keys UI Renderer
   // --------------------------------------------------------------------------
-  renderHeatmap(containerEl) {
+  renderHeatmap(containerEl, customStats = null) {
     if (!containerEl) return;
-    const stats = this.getKeyStats();
+    const stats = (customStats && typeof customStats === 'object' && Object.keys(customStats).length > 0)
+      ? customStats
+      : this.getKeyStats();
 
     const keyboardRows = [
       ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
@@ -938,9 +1400,11 @@ const AnalyticsService = {
     });
   },
 
-  renderWeakKeysSummary(containerEl) {
+  renderWeakKeysSummary(containerEl, customWeakKeys = null) {
     if (!containerEl) return;
-    const weakKeys = this.getWeakKeys(5);
+    const weakKeys = (customWeakKeys && Array.isArray(customWeakKeys) && customWeakKeys.length > 0)
+      ? customWeakKeys
+      : this.getWeakKeys(5);
 
     containerEl.innerHTML = '';
 
@@ -961,7 +1425,8 @@ const AnalyticsService = {
 
     weakKeys.forEach((item, idx) => {
       const pill = document.createElement('div');
-      pill.className = `weak-pill ${item.colorClass}`;
+      const colorClass = item.colorClass || (item.errorRate > 15 ? 'coral' : (item.errorRate >= 5 ? 'amber' : 'emerald'));
+      pill.className = `weak-pill ${colorClass}`;
       pill.title = `${item.displayKey}: ${item.errorRate}% error rate (${item.errors} errors / ${item.attempts} attempts)`;
       pill.innerHTML = `
         <span>#${idx + 1} <strong>${item.displayKey}</strong></span>
@@ -1011,8 +1476,23 @@ class TypingEngine {
     this.errorCount = 0;
     this.isCompleted = false;
     this.isModalOpen = false;
+    this.sessionKeyStats = {};
 
     this.bindEvents();
+  }
+
+  recordSessionKey(rawChar, isCorrect) {
+    if (!rawChar) return;
+    const char = (rawChar === ' ') ? ' ' : rawChar.toLowerCase();
+    if (!/^[a-z ]$/.test(char)) return;
+    if (!this.sessionKeyStats[char]) {
+      this.sessionKeyStats[char] = { attempts: 0, errors: 0 };
+    }
+    this.sessionKeyStats[char].attempts++;
+    if (!isCorrect) {
+      this.sessionKeyStats[char].errors++;
+    }
+    AnalyticsService.recordKey(char, isCorrect);
   }
 
   get currentIndex() {
@@ -1308,7 +1788,7 @@ class TypingEngine {
         span.className = 'char correct char-space';
       }
       SoundService.playKeyClick(false);
-      AnalyticsService.recordKey(' ', true);
+      this.recordSessionKey(' ', true);
       this.activeCharIndex++;
       this.updateCaretPosition();
       this.updateMetrics();
@@ -1335,7 +1815,7 @@ class TypingEngine {
           span.className = isSpace ? 'char incorrect char-space' : 'char incorrect';
         }
         this.errorCount++;
-        AnalyticsService.recordKey(this.targetText[i], false);
+        this.recordSessionKey(this.targetText[i], false);
       }
       SoundService.playKeyClick(true);
       this.activeCharIndex = nextSpaceIdx + 1;
@@ -1381,14 +1861,14 @@ class TypingEngine {
         span.className = isSpace ? 'char correct char-space' : 'char correct';
       }
       SoundService.playKeyClick(false);
-      AnalyticsService.recordKey(targetChar, true);
+      this.recordSessionKey(targetChar, true);
     } else {
       this.errorCount++;
       if (span) {
         span.className = isSpace ? 'char incorrect char-space' : 'char incorrect';
       }
       SoundService.playKeyClick(true);
-      AnalyticsService.recordKey(targetChar, false);
+      this.recordSessionKey(targetChar, false);
     }
 
     this.activeCharIndex++;
@@ -1574,9 +2054,10 @@ class HeaderController {
           } catch (err) {}
         } else {
           // Navigate to practice page with topic query and active mode/time
+          const pBase = this.searchForm?.dataset?.practiceUrl || '/practice/';
           const storedMode = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_mode') : null;
           const storedTime = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_time') : null;
-          let targetUrl = `practice.html?topic=${encodeURIComponent(query)}`;
+          let targetUrl = `${pBase}?topic=${encodeURIComponent(query)}`;
           if (storedMode) targetUrl += `&mode=${encodeURIComponent(storedMode)}`;
           if (storedMode === 'timed' && storedTime) targetUrl += `&time=${encodeURIComponent(storedTime)}`;
           window.location.href = targetUrl;
@@ -1596,9 +2077,10 @@ class HeaderController {
             window.history.replaceState({}, '', url.toString());
           } catch (err) {}
         } else {
+          const pBase = this.searchForm?.dataset?.practiceUrl || '/practice/';
           const storedMode = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_mode') : null;
           const storedTime = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_time') : null;
-          let targetUrl = 'practice.html?topic=random';
+          let targetUrl = `${pBase}?topic=random`;
           if (storedMode) targetUrl += `&mode=${encodeURIComponent(storedMode)}`;
           if (storedMode === 'timed' && storedTime) targetUrl += `&time=${encodeURIComponent(storedTime)}`;
           window.location.href = targetUrl;
@@ -1672,7 +2154,27 @@ class HomePageController {
     this.initDOMElements();
     this.restoreStoredState();
     this.bindEvents();
+    this.loadAnalytics();
+  }
+
+  async loadAnalytics() {
     this.renderAnalytics();
+    try {
+      const res = await fetch('/api/analytics/');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.sessions && Array.isArray(data.sessions) && data.sessions.length > 0) {
+          this.sessionLogs = data.sessions;
+          AnalyticsService.setStorage(AnalyticsService.SESSIONS_KEY, data.sessions);
+        }
+        if (data.all_key_stats && typeof data.all_key_stats === 'object') {
+          AnalyticsService.setStorage(AnalyticsService.KEYSTATS_KEY, data.all_key_stats);
+        }
+        this.renderAnalytics(data);
+      }
+    } catch (err) {
+      console.warn('Failed to load live backend analytics, keeping local cache:', err);
+    }
   }
 
   initDOMElements() {
@@ -1694,6 +2196,8 @@ class HomePageController {
     this.clearLogsBtn = document.getElementById('clear-logs-btn');
     this.sessionLogsList = document.getElementById('session-logs-list');
     this.sessionLogCount = document.getElementById('session-log-count');
+    this.practiceWeakKeysTopBtn = document.getElementById('practice-weak-keys-top-btn');
+    this.quickWeakChips = document.getElementById('quick-weak-chips');
   }
 
   restoreStoredState() {
@@ -1781,7 +2285,12 @@ class HomePageController {
     // Practice Weak Keys CTA
     if (this.practiceWeakKeysBtn) {
       this.practiceWeakKeysBtn.addEventListener('click', () => {
-        window.location.href = 'practice.html?mode=drill';
+        window.location.href = '/practice/?mode=drill';
+      });
+    }
+    if (this.practiceWeakKeysTopBtn) {
+      this.practiceWeakKeysTopBtn.addEventListener('click', () => {
+        window.location.href = '/practice/?mode=drill';
       });
     }
 
@@ -1844,7 +2353,8 @@ class HomePageController {
       params.set('time', this.selectedDuration);
       params.set('duration', this.selectedDuration);
     }
-    return `practice.html?${params.toString()}`;
+    const base = this.startPracticeBtn?.getAttribute('href')?.split('?')[0] || '/practice/';
+    return `${base}?${params.toString()}`;
   }
 
   updateStartUrl() {
@@ -1878,6 +2388,23 @@ class HomePageController {
 
     // 3. Session Logs List
     this.renderSessionLogs();
+
+    // 4. Quick Weak Chips
+    this.updateQuickWeakChips(liveData?.top_weak_keys);
+  }
+
+  updateQuickWeakChips(weakKeysList) {
+    if (!this.quickWeakChips) return;
+    let keys = [];
+    if (weakKeysList && Array.isArray(weakKeysList) && weakKeysList.length > 0) {
+      keys = weakKeysList.slice(0, 3).map(k => k.character?.toUpperCase()).filter(Boolean);
+    } else {
+      keys = AnalyticsService.getWeakKeys(3).map(k => k.key?.toUpperCase()).filter(k => k && k !== ' ');
+    }
+    if (!keys || keys.length === 0) {
+      keys = ['E', 'R', 'T'];
+    }
+    this.quickWeakChips.innerHTML = keys.slice(0, 3).map(c => `<span class="chip-key">${c}</span>`).join('');
   }
 
   renderSessionLogs() {
@@ -2430,11 +2957,122 @@ class PracticePageController {
     if (this.resErrors) this.resErrors.textContent = finalMetrics.errorCount;
     if (this.resChars) this.resChars.textContent = `${finalMetrics.correctChars} / ${finalMetrics.totalTargetChars}`;
 
-    if (this.modalNextBtn) {
-      if (this.currentChunkIndex < this.chunks.length - 1) {
-        this.modalNextBtn.querySelector('span').textContent = 'Next Paragraph [Enter / Space] ↵';
+    // 1. Update Circular SVG Gauges
+    const gaugeWpmBar = document.getElementById('gauge-wpm-bar');
+    const gaugeAccBar = document.getElementById('gauge-acc-bar');
+
+    if (gaugeWpmBar) {
+      const wpmFrac = Math.min(finalMetrics.wpm / 120, 1);
+      const wpmOffset = 314.16 * (1 - wpmFrac);
+      gaugeWpmBar.style.strokeDashoffset = wpmOffset;
+    }
+
+    if (gaugeAccBar) {
+      const accFrac = Math.min(finalMetrics.accuracy / 100, 1);
+      const accOffset = 314.16 * (1 - accFrac);
+      gaugeAccBar.style.strokeDashoffset = accOffset;
+    }
+
+    // 2. Rank & Streak Badge Logic
+    const rankBadge = document.getElementById('modal-rank-badge');
+    const rankIcon = document.getElementById('modal-rank-icon');
+    const rankText = document.getElementById('modal-rank-text');
+
+    let rankLabel = 'Solid Rhythm';
+    let rankEmoji = '✨';
+    let rankCls = 'rank-rhythm';
+
+    const activeTheme = document.documentElement.getAttribute('data-theme') || 'midnight';
+
+    if (activeTheme === 'funny') {
+      if (finalMetrics.wpm >= 75 && finalMetrics.accuracy >= 95) {
+        rankLabel = 'COMBO KING! 👑'; rankEmoji = '🕹️'; rankCls = 'rank-hyperspeed';
+      } else if (finalMetrics.wpm >= 55) {
+        rankLabel = 'TURBO FLOW! 🚀'; rankEmoji = '🎉'; rankCls = 'rank-swift';
+      } else if (finalMetrics.accuracy >= 98) {
+        rankLabel = 'BULLSEYE! 🎯'; rankEmoji = '⭐'; rankCls = 'rank-precision';
       } else {
-        this.modalNextBtn.querySelector('span').textContent = 'Practice Again [Enter / Space] ↵';
+        rankLabel = 'GROOVY! 🌈'; rankEmoji = '🍌'; rankCls = 'rank-momentum';
+      }
+    } else if (activeTheme === 'hacking') {
+      if (finalMetrics.wpm >= 75 && finalMetrics.accuracy >= 95) {
+        rankLabel = 'ROOT ACCESS GRANTED'; rankEmoji = '⚡'; rankCls = 'rank-hyperspeed';
+      } else if (finalMetrics.wpm >= 55) {
+        rankLabel = 'CIPHER STREAM ACTIVE'; rankEmoji = '📟'; rankCls = 'rank-swift';
+      } else if (finalMetrics.accuracy >= 98) {
+        rankLabel = 'PARITY VERIFIED 100%'; rankEmoji = '🎯'; rankCls = 'rank-precision';
+      } else {
+        rankLabel = 'BUFFER STABLE'; rankEmoji = '🔥'; rankCls = 'rank-momentum';
+      }
+    } else {
+      if (finalMetrics.wpm >= 80 && finalMetrics.accuracy >= 95) {
+        rankLabel = 'Hyperspeed Master'; rankEmoji = '⚡'; rankCls = 'rank-hyperspeed';
+      } else if (finalMetrics.wpm >= 60 && finalMetrics.accuracy >= 94) {
+        rankLabel = 'Swift Flow'; rankEmoji = '🚀'; rankCls = 'rank-swift';
+      } else if (finalMetrics.accuracy >= 98) {
+        rankLabel = 'Laser Precision'; rankEmoji = '🎯'; rankCls = 'rank-precision';
+      } else if (finalMetrics.wpm >= 45) {
+        rankLabel = 'Steady Momentum'; rankEmoji = '🔥'; rankCls = 'rank-momentum';
+      }
+    }
+
+    if (rankBadge) {
+      rankBadge.className = `modal-rank-badge ${rankCls}`;
+      if (rankIcon) rankIcon.textContent = rankEmoji;
+      if (rankText) rankText.textContent = rankLabel;
+    }
+
+    // 3. Meta topic and time
+    const metaTopicEl = document.getElementById('modal-meta-topic');
+    const metaTimeEl = document.getElementById('modal-meta-time');
+    const rawWpmPill = document.getElementById('res-raw-wpm-pill');
+
+    if (metaTopicEl) metaTopicEl.textContent = this.currentTopicData?.title || 'Practice Session';
+    if (metaTimeEl) {
+      const displaySeconds = (this.mode === 'timed') ? this.timeLimit : finalMetrics.elapsedSeconds;
+      metaTimeEl.textContent = this.formatTime(displaySeconds);
+    }
+    if (rawWpmPill) rawWpmPill.textContent = `Gross: ${finalMetrics.rawWpm} WPM`;
+
+    // 4. Session Missed Keys Strip & 1-Click Drill
+    const missedChipsContainer = document.getElementById('modal-missed-chips');
+    const drillKeysBtn = document.getElementById('modal-drill-keys-btn');
+    const sessionKeys = (this.engine && this.engine.sessionKeyStats) ? this.engine.sessionKeyStats : {};
+
+    const missedKeys = [];
+    for (const [char, stats] of Object.entries(sessionKeys)) {
+      if (stats.errors > 0 && char !== ' ') {
+        missedKeys.push({ char, errors: stats.errors });
+      }
+    }
+    missedKeys.sort((a, b) => b.errors - a.errors);
+    const topMissed = missedKeys.slice(0, 3);
+
+    if (missedChipsContainer) {
+      if (topMissed.length === 0) {
+        missedChipsContainer.innerHTML = `<span class="clean-run-badge">✨ 100% Clean Run — Zero Misses!</span>`;
+        if (drillKeysBtn) drillKeysBtn.style.display = 'none';
+      } else {
+        missedChipsContainer.innerHTML = topMissed.map(item => `
+          <span class="missed-chip">
+            ${item.char.toUpperCase()} <span>(${item.errors})</span>
+          </span>
+        `).join('');
+        if (drillKeysBtn) {
+          drillKeysBtn.style.display = 'inline-flex';
+          drillKeysBtn.onclick = () => {
+            this.hideResultsModal();
+            this.loadCustomWeakKeysDrill(topMissed.map(m => m.char));
+          };
+        }
+      }
+    }
+
+    if (this.modalNextBtn) {
+      const isLast = (this.currentChunkIndex >= this.chunks.length - 1);
+      const span = this.modalNextBtn.querySelector('span');
+      if (span) {
+        span.textContent = isLast ? 'Practice Again [↵]' : 'Next Paragraph [↵]';
       }
     }
 
@@ -2452,6 +3090,27 @@ class PracticePageController {
         this.modalNextBtn.focus();
       }
     }, 20);
+  }
+
+  loadCustomWeakKeysDrill(targetLetters = ['e', 'r', 't']) {
+    const drill = AnalyticsService.generateWeakDrillWithKeys(targetLetters, 40);
+    const focusKeysStr = targetLetters.map(k => k.toUpperCase()).join(', ');
+
+    this.currentTopicData = {
+      title: `🎯 Weak Keys Drill [${focusKeysStr}]`,
+      description: `Targeted 40-word accuracy drill for keys: ${focusKeysStr}.`,
+      url: '#'
+    };
+
+    this.chunks = [drill.wordsText];
+    this.currentChunkIndex = 0;
+    this.updateArticleMetaUI();
+    if (this.wikiExternalLink) {
+      this.wikiExternalLink.style.display = 'none';
+    }
+    this.loadActiveChunk();
+    this.hideStatus();
+    this.focusTypingArea();
   }
 
   advanceFromModal() {
@@ -2497,7 +3156,12 @@ class PracticePageController {
       samples: metrics.samples || []
     };
 
+    logItem.charactersTyped = metrics.correctChars || (this.engine ? this.engine.activeCharIndex : 0);
     this.sessionLogs = AnalyticsService.saveSession(logItem);
+
+    // Save to SQLite backend asynchronously
+    const sessionKeys = (this.engine && this.engine.sessionKeyStats) ? this.engine.sessionKeyStats : {};
+    AnalyticsService.saveSessionToServer(logItem, sessionKeys).catch(console.warn);
   }
 }
 
@@ -2532,6 +3196,10 @@ if (typeof window !== 'undefined') {
 
 // Universal DOM router
 document.addEventListener('DOMContentLoaded', () => {
+  ThemeService.init();
+  AmbientEngine.init();
+  window.themeService = ThemeService;
+  window.ambientEngine = AmbientEngine;
   window.headerController = new HeaderController();
 
   if (document.getElementById('home-setup-dashboard')) {

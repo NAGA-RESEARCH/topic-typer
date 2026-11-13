@@ -1,0 +1,215 @@
+{% extends 'typer/base.html' %}
+{% load static %}
+
+{% block title %}TopicTyper Arena — Distraction-Free Practice{% endblock %}
+{% block meta_description %}Distraction-free typing arena. Type real Wikipedia articles, build muscle memory, and learn while you type. Built by Naga Research Lab.{% endblock %}
+{% block brand_subtitle %}Distraction-Free Arena{% endblock %}
+
+{% block content %}
+<!-- Distraction-Free Single-Column Arena (94vw up to 1350px, NO sidebars) -->
+<main class="practice-shell" id="practice-arena">
+  <!-- Minimal Arena Top Bar -->
+  <section class="arena-top-bar" aria-label="Topic Information and Live Telemetry">
+    <div class="arena-meta">
+      <div class="arena-meta-top">
+        <a href="{% url 'home' %}" class="back-home-link" title="Return to Setup Dashboard">
+          <span>← Back to Setup</span>
+        </a>
+        <span class="badge badge-accent" id="arena-mode-pill">Complete Paragraph</span>
+        <span class="badge badge-subtle" id="paragraph-counter-pill">Paragraph 1 of 1</span>
+        <a id="arena-wiki-link" href="#" target="_blank" rel="noopener noreferrer" class="badge badge-outline" title="Open Wikipedia article in a new tab">
+          Wikipedia ↗
+        </a>
+      </div>
+      <h2 class="arena-title" id="arena-article-title">Loading topic...</h2>
+      <p class="arena-desc" id="arena-article-desc">Fetching encyclopedic extract from Wikipedia...</p>
+    </div>
+
+    <!-- Compact Live Stats HUD -->
+    <div class="arena-hud" aria-label="Live Typing Metrics">
+      <div class="hud-pill">
+        <span class="hud-pill-label">Speed</span>
+        <span class="hud-pill-val color-sky" id="stat-wpm">0</span>
+      </div>
+
+      <div class="hud-pill">
+        <span class="hud-pill-label">Accuracy</span>
+        <span class="hud-pill-val color-emerald" id="stat-accuracy">100%</span>
+      </div>
+
+      <div class="hud-pill">
+        <span class="hud-pill-label" id="hud-time-label">Time</span>
+        <span class="hud-pill-val" id="stat-time">00:00</span>
+      </div>
+
+      <div class="hud-pill">
+        <span class="hud-pill-label">Progress</span>
+        <span class="hud-pill-val" id="stat-progress">0%</span>
+      </div>
+
+      <!-- Auto-Pause Idle Status Pill -->
+      <div id="idle-status-badge" class="idle-badge hidden" title="Timer paused due to inactivity">
+        <span class="idle-dot">⏸</span>
+        <span>Paused — type to resume</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Loading / Status Banner -->
+  <div id="status-banner" class="status-banner hidden" role="status" aria-live="polite">
+    <span id="banner-spinner" class="spinner"></span>
+    <span id="banner-message">Loading topic...</span>
+  </div>
+
+  <!-- Main Typing Card -->
+  <section class="typing-card" aria-label="Typing Practice Arena">
+    <div class="typing-section" id="typing-section" tabindex="-1">
+      <!-- Focus Prompt Overlay: unblurred text underneath keeps first lines readable -->
+      <div id="focus-overlay" class="focus-overlay">
+        <div class="focus-pill">
+          <span class="focus-icon">⌨️</span>
+          <span>Click here or start typing to begin</span>
+        </div>
+      </div>
+
+      <!-- Hidden Input for Native Keystream Capture -->
+      <input 
+        type="text" 
+        id="hidden-input" 
+        class="hidden-input" 
+        autocomplete="off" 
+        autocorrect="off" 
+        autocapitalize="off" 
+        spellcheck="false" 
+        aria-label="Typing input stream"
+      />
+
+      <!-- Text Stream & Glowing I-Beam Caret -->
+      <div id="words-container" class="words-container" aria-live="polite">
+        <div id="caret" class="caret" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <!-- Action Controls & Keyboard Hints -->
+    <div class="typing-card-footer">
+      <div class="action-buttons">
+        <button type="button" id="restart-chunk-btn" class="btn btn-outline" title="Restart current paragraph [Esc]">
+          <span>↺ Restart [Esc]</span>
+        </button>
+        <button type="button" id="next-chunk-btn" class="btn btn-primary" title="Advance to next paragraph [Tab]">
+          <span>Next Paragraph [Tab] ➔</span>
+        </button>
+      </div>
+
+      <div class="keyboard-hints">
+        <span class="hint-pill"><kbd class="kbd">/</kbd> Search</span>
+        <span class="hint-pill"><kbd class="kbd">Tab</kbd> Next</span>
+        <span class="hint-pill"><kbd class="kbd">Esc</kbd> Restart</span>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block modals %}
+<!-- Graphical Completion Popup Modal (Zero Text Wall) -->
+<div id="results-modal" class="results-modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-rank-text">
+  <div class="modal-backdrop" id="modal-backdrop"></div>
+  <div class="modal-card modal-visual-card" id="modal-card">
+    <!-- Visual Rank & Streak Header -->
+    <div class="modal-visual-header">
+      <div id="modal-rank-badge" class="modal-rank-badge rank-swift">
+        <span class="rank-icon" id="modal-rank-icon">⚡</span>
+        <span class="rank-text" id="modal-rank-text">Hyperspeed Master</span>
+      </div>
+      <div class="modal-visual-meta">
+        <span class="visual-meta-topic" id="modal-meta-topic">Completed Article</span>
+        <span class="visual-meta-sep">•</span>
+        <span class="visual-meta-time" id="modal-meta-time">00:45</span>
+      </div>
+    </div>
+
+    <!-- Dual Animated Circular Gauges (Speed & Accuracy) -->
+    <div class="modal-gauges-row">
+      <!-- WPM Gauge -->
+      <div class="gauge-card">
+        <div class="gauge-svg-wrapper">
+          <svg class="circular-gauge" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="gauge-bg" cx="60" cy="60" r="50"></circle>
+            <circle id="gauge-wpm-bar" class="gauge-bar bar-sky" cx="60" cy="60" r="50"></circle>
+          </svg>
+          <div class="gauge-center-content">
+            <span class="gauge-value" id="res-wpm">0</span>
+            <span class="gauge-label">WPM</span>
+          </div>
+        </div>
+        <div class="gauge-sublabel">Net Speed</div>
+      </div>
+
+      <!-- Accuracy Gauge -->
+      <div class="gauge-card">
+        <div class="gauge-svg-wrapper">
+          <svg class="circular-gauge" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="gauge-bg" cx="60" cy="60" r="50"></circle>
+            <circle id="gauge-acc-bar" class="gauge-bar bar-emerald" cx="60" cy="60" r="50"></circle>
+          </svg>
+          <div class="gauge-center-content">
+            <span class="gauge-value" id="res-accuracy">100</span><span class="gauge-percent">%</span>
+            <span class="gauge-label">ACC</span>
+          </div>
+        </div>
+        <div class="gauge-sublabel">Precision</div>
+      </div>
+    </div>
+
+    <!-- Speed Progression Mini-Chart -->
+    <div class="modal-sparkline-row">
+      <div class="sparkline-header">
+        <span class="sparkline-title">Speed Curve</span>
+        <span class="sparkline-stat" id="res-raw-wpm-pill">Gross: 0 WPM</span>
+      </div>
+      <div class="modal-chart-container" id="modal-wpm-container">
+        <canvas id="modal-wpm-canvas" width="520" height="90"></canvas>
+        <div id="modal-chart-tooltip" class="chart-tooltip hidden"></div>
+      </div>
+    </div>
+
+    <!-- Session Missed Keys Strip + 1-Click Drill Button -->
+    <div class="modal-missed-keys-strip" id="modal-missed-strip">
+      <span class="missed-label">Focus Keys:</span>
+      <div id="modal-missed-chips" class="modal-missed-chips">
+        <!-- Rendered dynamically -->
+        <span class="clean-run-badge">✨ 100% Clean Run</span>
+      </div>
+      <button type="button" id="modal-drill-keys-btn" class="btn btn-sm btn-drill-keys" title="Practice instant drill with these missed keys">
+        <span>🎯 Drill Keys</span>
+      </button>
+    </div>
+
+    <!-- Compatibility hidden elements for metrics scripts -->
+    <div class="hidden" style="display:none !important;" aria-hidden="true">
+      <span id="res-time">00:00</span>
+      <span id="res-raw-wpm">0</span>
+      <span id="res-errors">0</span>
+      <span id="res-chars">0 / 0</span>
+    </div>
+
+    <!-- Visual Actions Toolbar -->
+    <div class="modal-actions-toolbar">
+      <button type="button" id="modal-retry-btn" class="btn btn-secondary btn-icon-label" tabindex="0" title="Practice again [Esc]">
+        <span class="btn-icon">↺</span>
+        <span>Replay [Esc]</span>
+      </button>
+
+      <button type="button" id="modal-next-btn" class="btn btn-primary btn-icon-label btn-next-action" tabindex="0" title="Next paragraph [Enter / Space]">
+        <span>Next Paragraph</span>
+        <span class="btn-icon">➔</span>
+      </button>
+
+      <a id="modal-wiki-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-icon-only" tabindex="0" title="Read full Wikipedia article">
+        <span>📖</span>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
