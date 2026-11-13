@@ -14,6 +14,18 @@ class TopicTyperViewTests(TestCase):
         self.assertContains(response, 'TopicTyper')
         self.assertContains(response, 'Master Typing. Learn the Universe.')
         self.assertContains(response, 'Naga Research Lab')
+        # Conditional Navbar Search: Hidden on Home
+        self.assertNotContains(response, 'id="header-search-form"')
+        self.assertContains(response, 'id="custom-topic-input"')
+        # Personal Best & Streak Pills
+        self.assertContains(response, 'id="home-pb-pill"')
+        self.assertContains(response, 'id="home-streak-pill"')
+        # Custom / Code Tabs
+        self.assertContains(response, 'id="tab-source-wiki"')
+        self.assertContains(response, 'id="tab-source-custom"')
+        # Zero default pre-selection on home load
+        self.assertNotContains(response, 'topic-card selected')
+        self.assertContains(response, 'id="topic-prompt-pill"')
         self.assertTemplateUsed(response, 'typer/index.html')
         self.assertTemplateUsed(response, 'typer/base.html')
 
@@ -23,6 +35,8 @@ class TopicTyperViewTests(TestCase):
         self.assertContains(response, 'TopicTyper')
         self.assertContains(response, 'practice-arena')
         self.assertContains(response, 'caret')
+        # Navbar Search active on practice page
+        self.assertContains(response, 'id="header-search-form"')
         self.assertTemplateUsed(response, 'typer/practice.html')
         self.assertTemplateUsed(response, 'typer/base.html')
 
@@ -31,6 +45,8 @@ class TopicTyperViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Naga Research Lab')
         self.assertContains(response, 'AK Bisariya')
+        # Conditional Navbar Search: Hidden on About
+        self.assertNotContains(response, 'id="header-search-form"')
         self.assertTemplateUsed(response, 'typer/about.html')
         self.assertTemplateUsed(response, 'typer/base.html')
 
@@ -134,3 +150,32 @@ class TopicTyperViewTests(TestCase):
         top_weak = analytics_data['top_weak_keys']
         self.assertGreaterEqual(len(top_weak), 1)
         self.assertEqual(top_weak[0]['character'], 'q')
+
+        # Check Personal Best WPM and Daily Streak computation
+        self.assertEqual(analytics_data['personal_best_wpm'], 72.0)
+        self.assertGreaterEqual(analytics_data['daily_streak'], 1)
+
+        # Test Code Mode and Custom Mode in session save
+        code_payload = {
+            'topic_title': 'Python: Fibonacci Generator',
+            'mode': 'code',
+            'duration_seconds': 35,
+            'wpm': 85.0,
+            'raw_wpm': 88.0,
+            'accuracy': 98.5,
+            'errors_count': 1,
+            'characters_typed': 240,
+        }
+        res_code = self.client.post(
+            reverse('api_save_session'),
+            data=json.dumps(code_payload),
+            content_type='application/json'
+        )
+        self.assertEqual(res_code.status_code, 200)
+        session_code = TypingSession.objects.filter(mode='code').first()
+        self.assertIsNotNone(session_code)
+        self.assertEqual(session_code.mode, 'code')
+
+        # Database index checks
+        self.assertTrue(TypingSession._meta.get_field('created_at').db_index)
+        self.assertTrue(CachedTopic._meta.get_field('title').db_index)

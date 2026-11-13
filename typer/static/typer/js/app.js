@@ -284,12 +284,14 @@ const AmbientEngine = {
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        if (this.animId) cancelAnimationFrame(this.animId);
-        this.animId = null;
+        this.stop();
       } else {
         this.start();
       }
     });
+
+    window.addEventListener('pagehide', () => this.stop());
+    window.addEventListener('pageshow', () => this.start());
 
     this.start();
   },
@@ -372,12 +374,23 @@ const AmbientEngine = {
   },
 
   start() {
-    if (this.animId) return;
+    if (this.animId || document.hidden) return;
     const loop = () => {
+      if (document.hidden) {
+        this.animId = null;
+        return;
+      }
       this.draw();
       this.animId = requestAnimationFrame(loop);
     };
     this.animId = requestAnimationFrame(loop);
+  },
+
+  stop() {
+    if (this.animId) {
+      cancelAnimationFrame(this.animId);
+      this.animId = null;
+    }
   },
 
   draw() {
@@ -489,26 +502,77 @@ const AmbientEngine = {
   }
 };
 
+// ============================================================================
+// 1.8 CURATED TOPICS POOL (40+ TOPICS ACROSS 10 DIVERSE DOMAINS)
+// ============================================================================
+const CURATED_TOPICS_POOL = [
+  // 1. Space & Cosmology
+  { title: 'James Webb Space Telescope', displayTitle: 'James Webb', category: 'Cosmology', icon: '🌌' },
+  { title: 'Black Hole', displayTitle: 'Black Holes', category: 'Cosmology', icon: '🕳️' },
+  { title: 'General Relativity', displayTitle: 'Relativity', category: 'Cosmology', icon: '🪐' },
+  { title: 'Voyager 1', displayTitle: 'Voyager 1', category: 'Spaceflight', icon: '🛰️' },
+  { title: 'Dark Matter', displayTitle: 'Dark Matter', category: 'Cosmology', icon: '✨' },
+
+  // 2. Computer Science & AI
+  { title: 'Artificial Intelligence', displayTitle: 'AI & Neural Nets', category: 'Computing', icon: '🤖' },
+  { title: 'Turing Machine', displayTitle: 'Turing Machine', category: 'Computer Science', icon: '💻' },
+  { title: 'Deep Learning', displayTitle: 'Deep Learning', category: 'Machine Learning', icon: '🔮' },
+  { title: 'Algorithm', displayTitle: 'Algorithms', category: 'Computer Science', icon: '🔢' },
+  { title: 'Computer Architecture', displayTitle: 'Chip Architecture', category: 'Computing', icon: '💾' },
+
+  // 3. Cybersecurity & Cryptography
+  { title: 'Public-Key Cryptography', displayTitle: 'Cryptography', category: 'Security', icon: '🔐' },
+  { title: 'Zero-Day Vulnerability', displayTitle: 'Zero-Day Exploits', category: 'Cybersecurity', icon: '🛡️' },
+  { title: 'RSA Cryptosystem', displayTitle: 'RSA Cipher', category: 'Cryptography', icon: '🔑' },
+  { title: 'Quantum Cryptography', displayTitle: 'Quantum Crypto', category: 'Security', icon: '🔒' },
+
+  // 4. Neuroscience & Psychology
+  { title: 'Neuroplasticity', displayTitle: 'Neuroplasticity', category: 'Neuroscience', icon: '🧠' },
+  { title: 'Cognitive Science', displayTitle: 'Cognitive Science', category: 'Mind', icon: '💡' },
+  { title: 'Dopamine', displayTitle: 'Dopamine & Drive', category: 'Neuroscience', icon: '⚡' },
+  { title: 'Consciousness', displayTitle: 'Consciousness', category: 'Psychology', icon: '👁️' },
+
+  // 5. Ancient History
+  { title: 'Ancient Rome', displayTitle: 'Ancient Rome', category: 'History', icon: '🏛️' },
+  { title: 'Library of Alexandria', displayTitle: 'Alexandria Library', category: 'History', icon: '📜' },
+  { title: 'Indus Valley Civilisation', displayTitle: 'Indus Valley', category: 'Archaeology', icon: '🏺' },
+  { title: 'Pyramids of Giza', displayTitle: 'Great Pyramids', category: 'History', icon: '🔺' },
+  { title: 'Renaissance', displayTitle: 'Renaissance', category: 'Art & History', icon: '🎨' },
+
+  // 6. Quantum Physics
+  { title: 'Quantum Mechanics', displayTitle: 'Quantum Physics', category: 'Physics', icon: '⚛️' },
+  { title: 'Quantum Entanglement', displayTitle: 'Entanglement', category: 'Quantum', icon: '🪢' },
+  { title: 'Schrodinger Equation', displayTitle: 'Wave Mechanics', category: 'Physics', icon: '〰️' },
+  { title: 'Higgs Boson', displayTitle: 'Higgs Boson', category: 'Particle Physics', icon: '💥' },
+
+  // 7. Biology & Evolution
+  { title: 'CRISPR Gene Editing', displayTitle: 'CRISPR Genetics', category: 'Genetics', icon: '🧬' },
+  { title: 'Cambrian Explosion', displayTitle: 'Cambrian Era', category: 'Evolution', icon: '🦖' },
+  { title: 'Biodiversity', displayTitle: 'Biodiversity', category: 'Nature', icon: '🌿' },
+  { title: 'Origin of Life', displayTitle: 'Abiogenesis', category: 'Biology', icon: '🌱' },
+
+  // 8. Philosophy
+  { title: 'Stoicism', displayTitle: 'Stoicism', category: 'Philosophy', icon: '🏛️' },
+  { title: 'Existentialism', displayTitle: 'Existentialism', category: 'Philosophy', icon: '🧭' },
+  { title: 'Epistemology', displayTitle: 'Epistemology', category: 'Philosophy', icon: '📖' },
+  { title: 'Philosophy of Mind', displayTitle: 'Mind & Dualism', category: 'Philosophy', icon: '🎭' },
+
+  // 9. Engineering
+  { title: 'Large Hadron Collider', displayTitle: 'Hadron Collider', category: 'Engineering', icon: '⚙️' },
+  { title: 'Semiconductor Device Fabrication', displayTitle: 'Silicon Chips', category: 'Hardware', icon: '🔬' },
+  { title: 'Nuclear Fusion', displayTitle: 'Fusion Energy', category: 'Energy', icon: '☀️' },
+  { title: 'Space Shuttle', displayTitle: 'Orbital Flight', category: 'Aerospace', icon: '🚀' },
+
+  // 10. Earth & Oceans
+  { title: 'Mariana Trench', displayTitle: 'Mariana Trench', category: 'Deep Sea', icon: '🌊' },
+  { title: 'Plate Tectonics', displayTitle: 'Plate Tectonics', category: 'Earth Science', icon: '🌋' },
+  { title: 'Atmosphere of Earth', displayTitle: 'Atmosphere', category: 'Climate', icon: '🌪️' },
+  { title: 'Bioluminescence', displayTitle: 'Bioluminescence', category: 'Oceans', icon: '✨' }
+];
+
 const WikipediaService = {
   // Curated diverse categories & topics for shuffling and fallback
-  curatedTopics: [
-    { title: 'Science', icon: '🔬' },
-    { title: 'History', icon: '📜' },
-    { title: 'Space Exploration', icon: '🚀' },
-    { title: 'Technology', icon: '💻' },
-    { title: 'Cinema', icon: '🎬' },
-    { title: 'Nature', icon: '🌿' },
-    { title: 'Solar System', icon: '🪐' },
-    { title: 'Artificial Intelligence', icon: '🤖' },
-    { title: 'Neuroscience', icon: '🧠' },
-    { title: 'Ancient Rome', icon: '🏛️' },
-    { title: 'Dinosaurs', icon: '🦖' },
-    { title: 'Ocean', icon: '🌊' },
-    { title: 'Music', icon: '🎵' },
-    { title: 'Philosophy', icon: '📚' },
-    { title: 'Renaissance', icon: '🎨' },
-    { title: 'Albert Einstein', icon: '💡' }
-  ],
+  curatedTopics: CURATED_TOPICS_POOL,
 
   // Built-in offline fallback topics in case network is disconnected
   fallbacks: {
@@ -723,6 +787,13 @@ const SoundService = {
   enabled: true,
 
   init() {
+    try {
+      const stored = localStorage.getItem('topictyper_sound');
+      if (stored !== null) {
+        this.enabled = (stored === '1');
+      }
+    } catch (e) {}
+
     if (!this.audioCtx && typeof (window.AudioContext || window.webkitAudioContext) !== 'undefined') {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       this.audioCtx = new AudioContextClass();
@@ -731,6 +802,9 @@ const SoundService = {
 
   toggle() {
     this.enabled = !this.enabled;
+    try {
+      localStorage.setItem('topictyper_sound', this.enabled ? '1' : '0');
+    } catch (e) {}
     return this.enabled;
   },
 
@@ -743,28 +817,62 @@ const SoundService = {
       }
       if (!this.audioCtx) return;
 
-      const now = this.audioCtx.currentTime;
-      const osc = this.audioCtx.createOscillator();
-      const gain = this.audioCtx.createGain();
+      const ctx = this.audioCtx;
+      const now = ctx.currentTime;
 
       if (isError) {
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(140, now);
-        osc.frequency.exponentialRampToValueAtTime(80, now + 0.04);
-        gain.gain.setValueAtTime(0.06, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
-      } else {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(420, now);
-        osc.frequency.exponentialRampToValueAtTime(180, now + 0.025);
-        gain.gain.setValueAtTime(0.045, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
-      }
+        // Soft low-frequency tap on error (tactile, non-jarring feedback)
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(115, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 0.05);
 
-      osc.connect(gain);
-      gain.connect(this.audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 0.05);
+        gain.gain.setValueAtTime(0.065, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      } else {
+        // Realistic Mechanical Switch "Thock":
+        // 1. High-frequency click transient (3-6ms) with natural pitch variation
+        const oscClick = ctx.createOscillator();
+        const clickGain = ctx.createGain();
+        oscClick.type = 'triangle';
+        const randPitch = 230 + Math.random() * 35;
+        oscClick.frequency.setValueAtTime(1850 + Math.random() * 350, now);
+        oscClick.frequency.exponentialRampToValueAtTime(380, now + 0.008);
+        clickGain.gain.setValueAtTime(0.038, now);
+        clickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.008);
+        oscClick.connect(clickGain);
+        clickGain.connect(ctx.destination);
+        oscClick.start(now);
+        oscClick.stop(now + 0.009);
+
+        // 2. Resonant switch bottom-out "thock" with lowpass filter
+        const oscThock = ctx.createOscillator();
+        const thockGain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(650, now);
+        filter.Q.setValueAtTime(3.2, now);
+
+        oscThock.type = 'sine';
+        oscThock.frequency.setValueAtTime(randPitch, now);
+        oscThock.frequency.exponentialRampToValueAtTime(randPitch * 0.48, now + 0.032);
+
+        thockGain.gain.setValueAtTime(0.06, now);
+        thockGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.032);
+
+        oscThock.connect(filter);
+        filter.connect(thockGain);
+        thockGain.connect(ctx.destination);
+        oscThock.start(now);
+        oscThock.stop(now + 0.035);
+      }
     } catch (e) {
       // Audio autoplay policy or unavailable
     }
@@ -1438,6 +1546,105 @@ const AnalyticsService = {
 };
 
 // ============================================================================
+// 4.5 CURATED DEVELOPER CODE SNIPPETS (PYTHON, JAVASCRIPT, SQL)
+// ============================================================================
+const CodeSnippets = {
+  python: [
+    {
+      id: 'py-fib',
+      title: 'Fibonacci Generator',
+      filename: 'fibonacci.py',
+      icon: '🐍',
+      code: `def fibonacci(limit):
+  a, b = 0, 1
+  while a < limit:
+    yield a
+    a, b = b, a + b
+
+squares = [x ** 2 for x in fibonacci(30)]
+print("Computed squares:", squares)`
+    },
+    {
+      id: 'py-bin-search',
+      title: 'Binary Search',
+      filename: 'binary_search.py',
+      icon: '🐍',
+      code: `def binary_search(array, target):
+  low = 0
+  high = len(array) - 1
+  while low <= high:
+    mid = (low + high) // 2
+    if array[mid] == target:
+      return mid
+    elif array[mid] < target:
+      low = mid + 1
+    else:
+      high = mid - 1
+  return -1`
+    }
+  ],
+  javascript: [
+    {
+      id: 'js-async-fetch',
+      title: 'Async User Pipeline',
+      filename: 'fetch_users.js',
+      icon: '⚡',
+      code: `async function fetchActiveUsers(endpoint) {
+  const response = await fetch(endpoint);
+  const data = await response.json();
+  return data.filter(user => user.isActive)
+    .map(u => ({ id: u.id, email: u.email }));
+}`
+    },
+    {
+      id: 'js-debounce',
+      title: 'Debounce Utility',
+      filename: 'debounce.js',
+      icon: '⚡',
+      code: `function debounce(fn, wait = 250) {
+  let timeout = null;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      fn.apply(this, args);
+    }, wait);
+  };
+}`
+    }
+  ],
+  sql: [
+    {
+      id: 'sql-window-rank',
+      title: 'Window Function Ranking',
+      filename: 'dept_salaries.sql',
+      icon: '🗄️',
+      code: `SELECT dept_id, employee_name, salary,
+  AVG(salary) OVER (PARTITION BY dept_id) AS avg_dept_salary,
+  RANK() OVER (PARTITION BY dept_id ORDER BY salary DESC) AS rank
+FROM employees
+WHERE is_active = TRUE
+ORDER BY dept_id, rank;`
+    },
+    {
+      id: 'sql-monthly-rev',
+      title: 'Monthly Revenue CTE',
+      filename: 'monthly_revenue.sql',
+      icon: '🗄️',
+      code: `WITH monthly_summary AS (
+  SELECT DATE_TRUNC('month', order_date) AS order_month,
+    SUM(total_amount) AS revenue,
+    COUNT(order_id) AS total_orders
+  FROM sales_orders
+  GROUP BY order_month
+)
+SELECT order_month, revenue, total_orders
+FROM monthly_summary
+ORDER BY order_month DESC;`
+    }
+  ]
+};
+
+// ============================================================================
 // 5. TYPING ENGINE (REFACTORED WITH PRECISION CARET TRACKING & KEY ANALYTICS)
 // ============================================================================
 class TypingEngine {
@@ -1473,6 +1680,7 @@ class TypingEngine {
     // Metrics State
     this.totalKeystrokes = 0;
     this.correctKeystrokes = 0;
+    this.currentChunkCorrectChars = 0;
     this.errorCount = 0;
     this.isCompleted = false;
     this.isModalOpen = false;
@@ -1526,10 +1734,8 @@ class TypingEngine {
    * Keeps active timer, elapsed time accumulation, and cumulative keystrokes intact.
    */
   loadNextChunkSeamlessly(chunkText) {
-    if (this.wordsContainer) {
-      const finishedCorrect = this.wordsContainer.querySelectorAll('.char.correct').length;
-      this.cumulativeCorrectChars += finishedCorrect;
-    }
+    this.cumulativeCorrectChars += this.currentChunkCorrectChars;
+    this.currentChunkCorrectChars = 0;
     this.targetText = chunkText.trim();
     this.activeCharIndex = 0;
     this.renderDOM();
@@ -1565,6 +1771,7 @@ class TypingEngine {
     this.charSpans = [];
     this.totalKeystrokes = 0;
     this.correctKeystrokes = 0;
+    this.currentChunkCorrectChars = 0;
     this.errorCount = 0;
     this.isCompleted = false;
     this.isModalOpen = false;
@@ -1590,33 +1797,51 @@ class TypingEngine {
     }
 
     this.charSpans = [];
-    const words = this.targetText.split(' ');
+    this.currentChunkCorrectChars = 0;
 
-    words.forEach((wordStr, wIdx) => {
-      const wordSpan = document.createElement('span');
-      wordSpan.className = 'word';
+    const lines = this.targetText.split('\n');
 
-      // Character spans in word
-      for (let i = 0; i < wordStr.length; i++) {
-        const charSpan = document.createElement('span');
-        charSpan.className = 'char untyped';
-        charSpan.textContent = wordStr[i];
-        charSpan.dataset.charIndex = this.charSpans.length;
-        wordSpan.appendChild(charSpan);
-        this.charSpans.push(charSpan);
+    lines.forEach((lineStr, lineIdx) => {
+      if (lineIdx > 0) {
+        // Linebreak newline indicator for multiline text / code
+        const newlineSpan = document.createElement('span');
+        newlineSpan.className = 'char untyped char-newline';
+        newlineSpan.textContent = '↵';
+        newlineSpan.dataset.charIndex = this.charSpans.length;
+        this.wordsContainer.appendChild(newlineSpan);
+        this.charSpans.push(newlineSpan);
+        this.wordsContainer.appendChild(document.createElement('br'));
       }
 
-      // Space span following the word (except after the final word)
-      if (wIdx < words.length - 1) {
-        const spaceSpan = document.createElement('span');
-        spaceSpan.className = 'char untyped char-space';
-        spaceSpan.innerHTML = '&nbsp;';
-        spaceSpan.dataset.charIndex = this.charSpans.length;
-        wordSpan.appendChild(spaceSpan);
-        this.charSpans.push(spaceSpan);
+      let i = 0;
+      while (i < lineStr.length) {
+        if (lineStr[i] === ' ') {
+          const spaceSpan = document.createElement('span');
+          spaceSpan.className = 'char untyped char-space';
+          spaceSpan.innerHTML = '&nbsp;';
+          spaceSpan.dataset.charIndex = this.charSpans.length;
+          this.wordsContainer.appendChild(spaceSpan);
+          this.charSpans.push(spaceSpan);
+          i++;
+        } else {
+          let wordChars = '';
+          while (i < lineStr.length && lineStr[i] !== ' ') {
+            wordChars += lineStr[i];
+            i++;
+          }
+          const wordSpan = document.createElement('span');
+          wordSpan.className = 'word';
+          for (let j = 0; j < wordChars.length; j++) {
+            const charSpan = document.createElement('span');
+            charSpan.className = 'char untyped';
+            charSpan.textContent = wordChars[j];
+            charSpan.dataset.charIndex = this.charSpans.length;
+            wordSpan.appendChild(charSpan);
+            this.charSpans.push(charSpan);
+          }
+          this.wordsContainer.appendChild(wordSpan);
+        }
       }
-
-      this.wordsContainer.appendChild(wordSpan);
     });
   }
 
@@ -1688,8 +1913,7 @@ class TypingEngine {
     }
     const elapsedSeconds = Math.max(totalActiveMs / 1000, 0.5);
     const elapsedMinutes = elapsedSeconds / 60;
-    const currentChunkCorrect = this.wordsContainer ? this.wordsContainer.querySelectorAll('.char.correct').length : 0;
-    const totalCorrect = this.cumulativeCorrectChars + currentChunkCorrect;
+    const totalCorrect = this.cumulativeCorrectChars + this.currentChunkCorrectChars;
     const instWpm = Math.max(0, Math.round((totalCorrect / 5) / elapsedMinutes));
     this.instantaneousSamples.push({
       time: Math.round(elapsedSeconds),
@@ -1706,6 +1930,32 @@ class TypingEngine {
     }
 
     this.recordKeystrokeActivity();
+
+    // Handle Enter (especially for newlines in code & multiline text)
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const targetChar = this.targetText[this.activeCharIndex];
+      if (targetChar === '\n') {
+        this.processChar('\n');
+      } else {
+        this.processChar(targetChar || ' ');
+      }
+      return;
+    }
+
+    // Handle Tab in code or custom mode (indentation helper)
+    if (e.key === 'Tab') {
+      if (this.mode === 'code' || this.mode === 'custom') {
+        e.preventDefault();
+        if (this.targetText[this.activeCharIndex] === ' ') {
+          this.processChar(' ');
+          if (this.targetText[this.activeCharIndex] === ' ') {
+            this.processChar(' ');
+          }
+          return;
+        }
+      }
+    }
 
     // Handle Backspace
     if (e.key === 'Backspace') {
@@ -1755,8 +2005,18 @@ class TypingEngine {
       this.activeCharIndex--;
       const span = this.charSpans[this.activeCharIndex];
       if (span) {
+        if (span.classList.contains('correct')) {
+          this.currentChunkCorrectChars = Math.max(0, this.currentChunkCorrectChars - 1);
+        }
         const isSpace = span.classList.contains('char-space');
-        span.className = isSpace ? 'char untyped char-space' : 'char untyped';
+        const isNewline = span.classList.contains('char-newline');
+        if (isSpace) {
+          span.className = 'char untyped char-space';
+        } else if (isNewline) {
+          span.className = 'char untyped char-newline';
+        } else {
+          span.className = 'char untyped';
+        }
       }
       SoundService.playKeyClick(false);
       this.updateCaretPosition();
@@ -1783,6 +2043,7 @@ class TypingEngine {
     if (targetChar === ' ') {
       this.totalKeystrokes++;
       this.correctKeystrokes++;
+      this.currentChunkCorrectChars++;
       const span = this.charSpans[this.activeCharIndex];
       if (span) {
         span.className = 'char correct char-space';
@@ -1812,7 +2073,14 @@ class TypingEngine {
         const span = this.charSpans[i];
         if (span) {
           const isSpace = span.classList.contains('char-space');
-          span.className = isSpace ? 'char incorrect char-space' : 'char incorrect';
+          const isNewline = span.classList.contains('char-newline');
+          if (isSpace) {
+            span.className = 'char incorrect char-space';
+          } else if (isNewline) {
+            span.className = 'char incorrect char-newline';
+          } else {
+            span.className = 'char incorrect';
+          }
         }
         this.errorCount++;
         this.recordSessionKey(this.targetText[i], false);
@@ -1851,21 +2119,35 @@ class TypingEngine {
     const targetChar = this.targetText[this.activeCharIndex];
     const span = this.charSpans[this.activeCharIndex];
     const isSpace = span?.classList.contains('char-space');
+    const isNewline = span?.classList.contains('char-newline');
 
     this.totalKeystrokes++;
     const isMatch = (typedChar === targetChar);
 
     if (isMatch) {
       this.correctKeystrokes++;
+      this.currentChunkCorrectChars++;
       if (span) {
-        span.className = isSpace ? 'char correct char-space' : 'char correct';
+        if (isSpace) {
+          span.className = 'char correct char-space';
+        } else if (isNewline) {
+          span.className = 'char correct char-newline';
+        } else {
+          span.className = 'char correct';
+        }
       }
       SoundService.playKeyClick(false);
       this.recordSessionKey(targetChar, true);
     } else {
       this.errorCount++;
       if (span) {
-        span.className = isSpace ? 'char incorrect char-space' : 'char incorrect';
+        if (isSpace) {
+          span.className = 'char incorrect char-space';
+        } else if (isNewline) {
+          span.className = 'char incorrect char-newline';
+        } else {
+          span.className = 'char incorrect';
+        }
       }
       SoundService.playKeyClick(true);
       this.recordSessionKey(targetChar, false);
@@ -1941,8 +2223,7 @@ class TypingEngine {
       : Math.max(elapsedSeconds, 0.5);
     const elapsedMinutes = effectiveSeconds / 60;
 
-    const currentChunkCorrect = this.wordsContainer ? this.wordsContainer.querySelectorAll('.char.correct').length : 0;
-    const totalCorrectChars = this.cumulativeCorrectChars + currentChunkCorrect;
+    const totalCorrectChars = this.cumulativeCorrectChars + this.currentChunkCorrectChars;
     const totalTargetChars = this.targetText.length;
 
     const wpm = (this.startTime && elapsedMinutes > 0) ? Math.round((totalCorrectChars / 5) / elapsedMinutes) : 0;
@@ -2120,16 +2401,25 @@ class HeaderController {
 
   initKeyboardShortcuts() {
     window.addEventListener('keydown', (e) => {
-      // Shortcut "/" focuses the header search input unless user is already typing in an input
-      if (e.key === '/' && this.searchInput) {
+      // Shortcut "/" focuses the header search input (or home custom topic input if on Home)
+      if (e.key === '/') {
         const activeTag = document.activeElement?.tagName;
         if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA') {
           const modalEl = document.getElementById('results-modal');
           const isModalOpen = window.practiceApp?.isModalOpen || (modalEl && !modalEl.classList.contains('hidden'));
           if (!isModalOpen) {
-            e.preventDefault();
-            this.searchInput.focus();
-            this.searchInput.select();
+            if (this.searchInput) {
+              e.preventDefault();
+              this.searchInput.focus();
+              this.searchInput.select();
+            } else {
+              const homeInput = document.getElementById('custom-topic-input');
+              if (homeInput) {
+                e.preventDefault();
+                homeInput.focus();
+                homeInput.select();
+              }
+            }
           }
         }
       }
@@ -2147,14 +2437,51 @@ class HomePageController {
 
     this.selectedMode = (storedMode === 'timed' || storedMode === 'paragraph') ? storedMode : 'paragraph';
     this.selectedDuration = (storedTime && [15, 30, 60, 120].includes(storedTime)) ? storedTime : 60;
-    this.selectedTopic = 'Quantum Mechanics';
+    
+    // Zero default pre-selection on load (user choice first, Quantum NOT pre-selected)
+    this.selectedTopic = null;
     this.showMovingAvg = true;
     this.sessionLogs = AnalyticsService.getSessions();
 
+    // Code Snippet Selection State
+    this.activeCodeLang = 'python';
+    this.activeSnippetIdx = 0;
+
     this.initDOMElements();
+    this.renderDynamicTopicCards();
     this.restoreStoredState();
+    this.restorePBAndStreak();
     this.bindEvents();
     this.loadAnalytics();
+  }
+
+  restorePBAndStreak() {
+    try {
+      const pb = localStorage.getItem('topictyper_pb_wpm');
+      const streak = localStorage.getItem('topictyper_daily_streak');
+      if (pb && this.homePbText) {
+        const pbVal = Math.round(parseFloat(pb));
+        if (pbVal > 0) this.homePbText.textContent = `PB: ${pbVal} WPM`;
+      }
+      if (streak && this.homeStreakText) {
+        this.homeStreakText.textContent = `${streak} Day Streak`;
+      }
+    } catch (e) {}
+  }
+
+  updatePBAndStreak(pbWpm, dailyStreak) {
+    const pbVal = Math.round(pbWpm || 0);
+    if (this.homePbText) {
+      this.homePbText.textContent = pbVal > 0 ? `PB: ${pbVal} WPM` : 'PB: -- WPM';
+    }
+    if (this.homeStreakText) {
+      const streak = dailyStreak || 0;
+      this.homeStreakText.textContent = `${streak} Day Streak`;
+    }
+    try {
+      localStorage.setItem('topictyper_pb_wpm', String(pbVal));
+      localStorage.setItem('topictyper_daily_streak', String(dailyStreak || 0));
+    } catch (e) {}
   }
 
   async loadAnalytics() {
@@ -2171,6 +2498,7 @@ class HomePageController {
           AnalyticsService.setStorage(AnalyticsService.KEYSTATS_KEY, data.all_key_stats);
         }
         this.renderAnalytics(data);
+        this.updatePBAndStreak(data.personal_best_wpm, data.daily_streak);
       }
     } catch (err) {
       console.warn('Failed to load live backend analytics, keeping local cache:', err);
@@ -2182,9 +2510,43 @@ class HomePageController {
     this.modeTimedCard = document.getElementById('mode-card-timed');
     this.timedDurationSelector = document.getElementById('timed-duration-selector');
     this.durationPills = document.querySelectorAll('.duration-pill');
+    
+    // Topic Grid & Inline Prompt
+    this.curatedTopicGrid = document.getElementById('curated-topic-grid');
+    this.topicPromptPill = document.getElementById('topic-prompt-pill');
     this.topicCards = document.querySelectorAll('.topic-card');
     this.customTopicInput = document.getElementById('custom-topic-input');
     this.startPracticeBtn = document.getElementById('start-practice-btn');
+
+    // Header PB & Streak Badges
+    this.homePbText = document.getElementById('home-pb-text');
+    this.homeStreakText = document.getElementById('home-streak-text');
+
+    // Source Tabs (Wikipedia vs Custom / Code)
+    this.tabSourceWiki = document.getElementById('tab-source-wiki');
+    this.tabSourceCustom = document.getElementById('tab-source-custom');
+    this.panelSourceWiki = document.getElementById('panel-source-wiki');
+    this.panelSourceCustom = document.getElementById('panel-source-custom');
+
+    // Custom Subtabs (Paste Text vs Code Snippets)
+    this.subtabBtnText = document.getElementById('subtab-btn-text');
+    this.subtabBtnCode = document.getElementById('subtab-btn-code');
+    this.subpaneText = document.getElementById('subpane-text');
+    this.subpaneCode = document.getElementById('subpane-code');
+
+    // Custom Textarea Elements
+    this.customTextInput = document.getElementById('custom-text-input');
+    this.customWordsCount = document.getElementById('custom-words-count');
+    this.customCharsCount = document.getElementById('custom-chars-count');
+    this.startCustomTextBtn = document.getElementById('start-custom-text-btn');
+
+    // Code Snippet Elements
+    this.langPills = document.querySelectorAll('.lang-pill');
+    this.snippetChipsContainer = document.getElementById('snippet-chips-container');
+    this.codeLangIcon = document.getElementById('code-lang-icon');
+    this.codeFileTitle = document.getElementById('code-file-title');
+    this.codePreviewContent = document.getElementById('code-preview-content');
+    this.startCodePracticeBtn = document.getElementById('start-code-practice-btn');
 
     // Analytics elements
     this.wpmTrendCanvas = document.getElementById('wpm-trend-canvas');
@@ -2198,6 +2560,88 @@ class HomePageController {
     this.sessionLogCount = document.getElementById('session-log-count');
     this.practiceWeakKeysTopBtn = document.getElementById('practice-weak-keys-top-btn');
     this.quickWeakChips = document.getElementById('quick-weak-chips');
+  }
+
+  /**
+   * Randomly shuffles the 40+ topic pool and picks 7 fresh topics on every page load/refresh,
+   * rendered alongside the 8th "Surprise Me (Random)" card with ZERO default pre-selection.
+   */
+  renderDynamicTopicCards() {
+    if (!this.curatedTopicGrid) return;
+
+    // Fisher-Yates shuffle on curated pool
+    const poolCopy = [...CURATED_TOPICS_POOL];
+    for (let i = poolCopy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [poolCopy[i], poolCopy[j]] = [poolCopy[j], poolCopy[i]];
+    }
+
+    const selected7 = poolCopy.slice(0, 7);
+
+    // Build markup with NO pre-selected class on any card
+    const cardsHtml = selected7.map(item => `
+      <div class="topic-card" data-topic="${item.title}" title="${item.title}">
+        <span class="topic-card-icon">${item.icon}</span>
+        <div class="topic-card-body">
+          <span class="topic-card-title">${item.displayTitle}</span>
+          <span class="topic-card-tag">${item.category}</span>
+        </div>
+      </div>
+    `).join('');
+
+    const surpriseCardHtml = `
+      <div class="topic-card" data-topic="random" title="Surprise Me (Random Topic)">
+        <span class="topic-card-icon">🎲</span>
+        <div class="topic-card-body">
+          <span class="topic-card-title">Surprise Me</span>
+          <span class="topic-card-tag">Random</span>
+        </div>
+      </div>
+    `;
+
+    this.curatedTopicGrid.innerHTML = cardsHtml + surpriseCardHtml;
+    this.topicCards = this.curatedTopicGrid.querySelectorAll('.topic-card');
+    this.bindTopicCardClicks();
+  }
+
+  bindTopicCardClicks() {
+    if (!this.topicCards) return;
+    this.topicCards.forEach(card => {
+      card.addEventListener('click', () => {
+        // Toggle active selection exclusively to this card
+        this.topicCards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        this.selectedTopic = card.dataset.topic || 'random';
+        if (this.customTopicInput) {
+          this.customTopicInput.value = '';
+        }
+        this.clearTopicPrompt();
+        this.updateStartUrl();
+      });
+    });
+  }
+
+  promptTopicSelection() {
+    if (this.topicPromptPill) {
+      this.topicPromptPill.classList.remove('hidden');
+    }
+    if (this.curatedTopicGrid) {
+      this.curatedTopicGrid.classList.remove('grid-shake');
+      void this.curatedTopicGrid.offsetWidth; // Force reflow to re-trigger CSS keyframe
+      this.curatedTopicGrid.classList.add('grid-shake');
+      setTimeout(() => {
+        this.curatedTopicGrid?.classList.remove('grid-shake');
+      }, 500);
+    }
+  }
+
+  clearTopicPrompt() {
+    if (this.topicPromptPill) {
+      this.topicPromptPill.classList.add('hidden');
+    }
+    if (this.curatedTopicGrid) {
+      this.curatedTopicGrid.classList.remove('grid-shake');
+    }
   }
 
   restoreStoredState() {
@@ -2242,43 +2686,162 @@ class HomePageController {
       });
     });
 
-    // Topic Cards Selection
-    this.topicCards.forEach(card => {
-      card.addEventListener('click', () => {
-        this.topicCards.forEach(c => c.classList.remove('selected'));
-        card.classList.add('selected');
-        this.selectedTopic = card.dataset.topic || 'random';
-        if (this.customTopicInput) {
-          this.customTopicInput.value = '';
-        }
-        this.updateStartUrl();
-      });
-    });
-
-    // Custom Topic Input
+    // Custom Topic Search Input: Clears card highlight and updates selectedTopic
     if (this.customTopicInput) {
       this.customTopicInput.addEventListener('input', () => {
         const val = this.customTopicInput.value.trim();
-        if (val) {
-          this.topicCards.forEach(c => c.classList.remove('selected'));
-          this.selectedTopic = val;
-        } else {
-          const firstCard = this.topicCards[0];
-          if (firstCard) {
-            firstCard.classList.add('selected');
-            this.selectedTopic = firstCard.dataset.topic || 'random';
+        this.topicCards.forEach(c => c.classList.remove('selected'));
+        this.selectedTopic = val ? val : null;
+        this.clearTopicPrompt();
+        this.updateStartUrl();
+      });
+
+      this.customTopicInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const val = this.customTopicInput.value.trim();
+          if (val) {
+            this.selectedTopic = val;
+            window.location.href = this.buildPracticeUrl(val);
+          } else {
+            this.promptTopicSelection();
           }
         }
-        this.updateStartUrl();
       });
     }
 
-    // Start Practice Button Click
+    // Start Practice Button Click (Validates user topic choice first)
     if (this.startPracticeBtn) {
       this.startPracticeBtn.addEventListener('click', (e) => {
+        const customVal = this.customTopicInput?.value.trim();
+        const effectiveTopic = customVal || this.selectedTopic;
+
+        // If no topic selected, prompt user with shake and inline alert
+        if (!effectiveTopic) {
+          e.preventDefault();
+          this.promptTopicSelection();
+          return;
+        }
+
         e.preventDefault();
-        const url = this.buildPracticeUrl();
+        const url = this.buildPracticeUrl(effectiveTopic);
         window.location.href = url;
+      });
+    }
+
+    // Content Source Tabs (Wikipedia Topics vs Custom / Code)
+    if (this.tabSourceWiki && this.tabSourceCustom) {
+      this.tabSourceWiki.addEventListener('click', () => {
+        this.tabSourceWiki.classList.add('active');
+        this.tabSourceWiki.setAttribute('aria-selected', 'true');
+        this.tabSourceCustom.classList.remove('active');
+        this.tabSourceCustom.setAttribute('aria-selected', 'false');
+        this.panelSourceWiki?.classList.remove('hidden');
+        this.panelSourceCustom?.classList.add('hidden');
+      });
+
+      this.tabSourceCustom.addEventListener('click', () => {
+        this.tabSourceCustom.classList.add('active');
+        this.tabSourceCustom.setAttribute('aria-selected', 'true');
+        this.tabSourceWiki.classList.remove('active');
+        this.tabSourceWiki.setAttribute('aria-selected', 'false');
+        this.panelSourceCustom?.classList.remove('hidden');
+        this.panelSourceWiki?.classList.add('hidden');
+
+        // Clear topic card highlight and prompt when switching away
+        this.topicCards.forEach(c => c.classList.remove('selected'));
+        this.selectedTopic = null;
+        this.clearTopicPrompt();
+        this.updateStartUrl();
+
+        this.renderCodeSnippetsUI();
+      });
+    }
+
+    // Custom Subtabs (Paste Text vs Code Snippets)
+    if (this.subtabBtnText && this.subtabBtnCode) {
+      this.subtabBtnText.addEventListener('click', () => {
+        this.subtabBtnText.classList.add('active');
+        this.subtabBtnCode.classList.remove('active');
+        this.subpaneText?.classList.remove('hidden');
+        this.subpaneCode?.classList.add('hidden');
+      });
+
+      this.subtabBtnCode.addEventListener('click', () => {
+        this.subtabBtnCode.classList.add('active');
+        this.subtabBtnText.classList.remove('active');
+        this.subpaneCode?.classList.remove('hidden');
+        this.subpaneText?.classList.add('hidden');
+        this.renderCodeSnippetsUI();
+      });
+    }
+
+    // Paste Custom Text: Character & Word Counter
+    if (this.customTextInput) {
+      this.customTextInput.addEventListener('input', () => {
+        const val = this.customTextInput.value || '';
+        const charCount = val.length;
+        const words = val.trim() ? val.trim().split(/\s+/).length : 0;
+
+        if (this.customCharsCount) {
+          this.customCharsCount.textContent = `${charCount} character${charCount === 1 ? '' : 's'}`;
+        }
+        if (this.customWordsCount) {
+          this.customWordsCount.textContent = `${words} word${words === 1 ? '' : 's'}`;
+        }
+        if (this.startCustomTextBtn) {
+          this.startCustomTextBtn.disabled = (charCount < 10);
+        }
+      });
+    }
+
+    // Start Custom Text Practice Button
+    if (this.startCustomTextBtn) {
+      this.startCustomTextBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const text = this.customTextInput?.value.trim();
+        if (!text || text.length < 10) return;
+
+        try {
+          sessionStorage.setItem('typer_custom_text', text);
+          sessionStorage.setItem('typer_custom_title', 'Custom Study Notes');
+          sessionStorage.setItem('typer_custom_desc', 'User-provided custom text practice.');
+          sessionStorage.setItem('typer_mode', 'custom');
+        } catch (err) {}
+
+        window.location.href = '/practice/?mode=custom';
+      });
+    }
+
+    // Code Snippets: Language Pills
+    if (this.langPills && this.langPills.length > 0) {
+      this.langPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+          this.langPills.forEach(p => p.classList.remove('active'));
+          pill.classList.add('active');
+          this.activeCodeLang = pill.dataset.lang || 'python';
+          this.activeSnippetIdx = 0;
+          this.renderCodeSnippetsUI();
+        });
+      });
+    }
+
+    // Start Code Snippet Practice Button
+    if (this.startCodePracticeBtn) {
+      this.startCodePracticeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const snippets = CodeSnippets[this.activeCodeLang] || CodeSnippets.python;
+        const snippet = snippets[this.activeSnippetIdx] || snippets[0];
+        if (!snippet) return;
+
+        try {
+          sessionStorage.setItem('typer_custom_text', snippet.code);
+          sessionStorage.setItem('typer_custom_title', `${snippet.title} (${snippet.filename})`);
+          sessionStorage.setItem('typer_custom_desc', `${snippet.filename} — Clean developer code snippet for typing practice.`);
+          sessionStorage.setItem('typer_mode', 'code');
+        } catch (err) {}
+
+        window.location.href = `/practice/?mode=code&lang=${encodeURIComponent(this.activeCodeLang)}`;
       });
     }
 
@@ -2298,24 +2861,38 @@ class HomePageController {
     if (this.clearLogsBtn) {
       this.clearLogsBtn.addEventListener('click', () => {
         if (confirm('Clear your practice history and reset weak keys analytics?')) {
-          AnalyticsService.clearSessions();
-          AnalyticsService.clearKeyStats();
+          AnalyticsService.clearAll();
           this.sessionLogs = [];
           this.renderAnalytics();
+          this.updateQuickWeakChips();
         }
       });
     }
+  }
 
-    // Window Resize Chart Redraw
-    window.addEventListener('resize', () => {
-      if (this.wpmTrendCanvas) {
-        AnalyticsService.renderWpmChart(this.wpmTrendCanvas, this.chartTooltip, this.sessionLogs, {
-          showMovingAvg: this.showMovingAvg
+  renderCodeSnippetsUI() {
+    const snippets = CodeSnippets[this.activeCodeLang] || CodeSnippets.python;
+    if (this.snippetChipsContainer) {
+      this.snippetChipsContainer.innerHTML = snippets.map((s, idx) => `
+        <button type="button" class="snippet-chip ${idx === this.activeSnippetIdx ? 'active' : ''}" data-idx="${idx}">
+          ${s.title}
+        </button>
+      `).join('');
+
+      this.snippetChipsContainer.querySelectorAll('.snippet-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.activeSnippetIdx = parseInt(btn.dataset.idx, 10) || 0;
+          this.renderCodeSnippetsUI();
         });
-      }
-    });
+      });
+    }
 
-    this.updateStartUrl();
+    const currentSnippet = snippets[this.activeSnippetIdx] || snippets[0];
+    if (currentSnippet) {
+      if (this.codeFileTitle) this.codeFileTitle.textContent = currentSnippet.filename;
+      if (this.codeLangIcon) this.codeLangIcon.textContent = currentSnippet.icon || '💻';
+      if (this.codePreviewContent) this.codePreviewContent.textContent = currentSnippet.code;
+    }
   }
 
   selectMode(mode) {
@@ -2323,11 +2900,7 @@ class HomePageController {
     if (typeof sessionStorage !== 'undefined') {
       sessionStorage.setItem('typer_mode', mode);
     }
-
     if (mode === 'timed') {
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem('typer_time', this.selectedDuration);
-      }
       this.modeParagraphCard?.classList.remove('selected');
       this.modeTimedCard?.classList.add('selected');
       if (this.timedDurationSelector) {
@@ -2343,10 +2916,11 @@ class HomePageController {
     this.updateStartUrl();
   }
 
-  buildPracticeUrl() {
+  buildPracticeUrl(topicOverride = null) {
     const params = new URLSearchParams();
-    if (this.selectedTopic) {
-      params.set('topic', this.selectedTopic);
+    const topic = topicOverride || this.selectedTopic;
+    if (topic) {
+      params.set('topic', topic);
     }
     params.set('mode', this.selectedMode);
     if (this.selectedMode === 'timed') {
@@ -2354,7 +2928,7 @@ class HomePageController {
       params.set('duration', this.selectedDuration);
     }
     const base = this.startPracticeBtn?.getAttribute('href')?.split('?')[0] || '/practice/';
-    return `${base}?${params.toString()}`;
+    return topic ? `${base}?${params.toString()}` : base;
   }
 
   updateStartUrl() {
@@ -2363,7 +2937,7 @@ class HomePageController {
     }
   }
 
-  renderAnalytics() {
+  renderAnalytics(liveData = null) {
     this.sessionLogs = AnalyticsService.getSessions();
 
     // 1. WPM Progress Chart
@@ -2415,23 +2989,22 @@ class HomePageController {
     if (this.sessionLogs.length === 0) {
       this.sessionLogsList.innerHTML = `
         <div class="empty-log-state">
-          <span class="empty-icon">📝</span> No practice runs recorded yet. Start a practice session above to track your progress!
+          <span>📜</span>
+          <p>No practice logs yet. Complete a paragraph or sprint to log your results!</p>
         </div>
       `;
       return;
     }
 
     this.sessionLogsList.innerHTML = '';
-    this.sessionLogs.forEach((log) => {
+    const recentLogs = [...this.sessionLogs].reverse().slice(0, 10);
+    recentLogs.forEach(log => {
       const row = document.createElement('div');
-      row.className = 'session-log-row';
-      const modeLabel = log.mode === 'drill' 
-        ? 'Weak Keys Drill' 
-        : (log.mode === 'timed' ? `Timed Sprint (${log.timeLimit || 60}s)` : (log.totalChunks > 1 ? `Part ${log.chunkIndex} of ${log.totalChunks}` : 'Paragraph'));
+      row.className = 'session-log-item';
       row.innerHTML = `
-        <div class="log-meta">
-          <span class="log-topic-name">${log.topic}</span>
-          <span class="log-chunk-badge">${modeLabel}</span>
+        <div class="log-info">
+          <span class="log-topic">${log.topic || 'Random Topic'}</span>
+          <span class="log-mode">${log.mode === 'timed' ? '⏱️ Timed' : (log.mode === 'code' ? '💻 Code' : (log.mode === 'custom' ? '📝 Custom' : '📖 Paragraph'))}</span>
           <span class="log-timestamp">${log.timestamp || ''}</span>
         </div>
         <div class="log-stats">
@@ -2489,6 +3062,11 @@ class PracticePageController {
         this.arenaModePill.textContent = `Timed Sprint (${this.timeLimit}s)`;
       } else if (this.mode === 'drill') {
         this.arenaModePill.textContent = 'Weak Keys Drill';
+      } else if (this.mode === 'custom') {
+        this.arenaModePill.textContent = 'Custom Text';
+      } else if (this.mode === 'code') {
+        const lang = (this.urlParams.get('lang') || 'Code').toUpperCase();
+        this.arenaModePill.textContent = `💻 ${lang} Snippet`;
       } else {
         this.arenaModePill.textContent = 'Complete Paragraph';
       }
@@ -2734,11 +3312,69 @@ class PracticePageController {
   startSession() {
     if (this.mode === 'drill') {
       this.loadWeakKeysDrill();
+    } else if (this.mode === 'custom') {
+      this.loadCustomTextSession();
+    } else if (this.mode === 'code') {
+      this.loadCodeSnippetSession();
     } else if (this.requestedTopic && this.requestedTopic !== 'random') {
       this.loadTopic(this.requestedTopic);
     } else {
       this.loadRandomTopic();
     }
+  }
+
+  loadCustomTextSession() {
+    const rawText = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_custom_text') : null;
+    const customTitle = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_custom_title') : 'Custom Study Notes';
+    const customDesc = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_custom_desc') : 'User-provided custom text practice.';
+
+    const text = (rawText && rawText.trim().length >= 5) 
+      ? rawText.trim() 
+      : 'Knowledge is power. Learning to type with precision and velocity unlocks greater cognitive flow and unlocks the universe of possibilities.';
+
+    this.currentTopicData = {
+      title: customTitle,
+      description: customDesc,
+      url: '#'
+    };
+
+    const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+    this.chunks = (paragraphs.length > 0) ? paragraphs : [text];
+    this.currentChunkIndex = 0;
+
+    this.updateArticleMetaUI();
+    if (this.wikiExternalLink) {
+      this.wikiExternalLink.style.display = 'none';
+    }
+    this.loadActiveChunk();
+    this.hideStatus();
+    this.focusTypingArea();
+  }
+
+  loadCodeSnippetSession() {
+    const rawCode = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_custom_text') : null;
+    const codeTitle = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_custom_title') : 'Python: Fibonacci Generator';
+    const lang = (this.urlParams.get('lang') || 'Python').toUpperCase();
+
+    const defaultCode = `def fibonacci(limit):\n  a, b = 0, 1\n  while a < limit:\n    yield a\n    a, b = b, a + b\n\nsquares = [x ** 2 for x in fibonacci(30)]\nprint("Computed squares:", squares)`;
+    const code = (rawCode && rawCode.trim().length >= 5) ? rawCode : defaultCode;
+
+    this.currentTopicData = {
+      title: codeTitle,
+      description: `${lang} Developer Code Snippet — precision syntax & indentation practice.`,
+      url: '#'
+    };
+
+    this.chunks = [code];
+    this.currentChunkIndex = 0;
+
+    this.updateArticleMetaUI();
+    if (this.wikiExternalLink) {
+      this.wikiExternalLink.style.display = 'none';
+    }
+    this.loadActiveChunk();
+    this.hideStatus();
+    this.focusTypingArea();
   }
 
   showStatus(msg, type = 'info') {
