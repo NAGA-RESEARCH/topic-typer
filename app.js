@@ -982,17 +982,30 @@ class TypingEngine {
     this.hiddenInput = options.hiddenInput;
     this.onMetricsUpdate = options.onMetricsUpdate || (() => {});
     this.onComplete = options.onComplete || (() => {});
+    this.onChunkComplete = options.onChunkComplete || null;
+    this.onPauseStateChange = options.onPauseStateChange || (() => {});
+
+    // Practice Mode: 'paragraph' (default), 'timed', or 'drill'
+    this.mode = options.mode || 'paragraph';
+    this.timeLimit = options.timeLimit || 60; // in seconds for timed mode
 
     // Target text and flat list of character spans
     this.targetText = '';
     this.charSpans = [];
     this.activeCharIndex = 0;
 
-    // Metrics State
+    // Accurate Active Typing & Idle Pause Engine
     this.startTime = null;
     this.timerInterval = null;
     this.samplerInterval = null;
+    this.idleTimeout = null;
+    this.activeElapsedMs = 0;
+    this.lastActiveTime = null;
+    this.isPaused = false;
+    this.cumulativeCorrectChars = 0;
     this.instantaneousSamples = [];
+
+    // Metrics State
     this.totalKeystrokes = 0;
     this.correctKeystrokes = 0;
     this.errorCount = 0;
@@ -1011,8 +1024,10 @@ class TypingEngine {
   }
 
   bindEvents() {
-    this.hiddenInput.addEventListener('keydown', (e) => this.handleKeyDown(e));
-    this.hiddenInput.addEventListener('input', (e) => this.handleInput(e));
+    if (this.hiddenInput) {
+      this.hiddenInput.addEventListener('keydown', (e) => this.handleKeyDown(e));
+      this.hiddenInput.addEventListener('input', (e) => this.handleInput(e));
+    }
     window.addEventListener('resize', () => this.updateCaretPosition());
   }
 
@@ -1026,6 +1041,27 @@ class TypingEngine {
     });
   }
 
+  /**
+   * Seamlessly loads the next paragraph in Timed Mode without stopping the active countdown!
+   * Keeps active timer, elapsed time accumulation, and cumulative keystrokes intact.
+   */
+  loadNextChunkSeamlessly(chunkText) {
+    if (this.wordsContainer) {
+      const finishedCorrect = this.wordsContainer.querySelectorAll('.char.correct').length;
+      this.cumulativeCorrectChars += finishedCorrect;
+    }
+    this.targetText = chunkText.trim();
+    this.activeCharIndex = 0;
+    this.renderDOM();
+    if (this.hiddenInput) {
+      this.hiddenInput.value = '';
+    }
+    requestAnimationFrame(() => {
+      this.updateCaretPosition();
+    });
+    this.updateMetrics();
+  }
+
   reset() {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
@@ -1035,8 +1071,16 @@ class TypingEngine {
       clearInterval(this.samplerInterval);
       this.samplerInterval = null;
     }
-    this.instantaneousSamples = [];
+    if (this.idleTimeout) {
+      clearTimeout(this.idleTimeout);
+      this.idleTimeout = null;
+    }
     this.startTime = null;
+    this.activeElapsedMs = 0;
+    this.lastActiveTime = null;
+    this.isPaused = false;
+    this.cumulativeCorrectChars = 0;
+    this.instantaneousSamples = [];
     this.activeCharIndex = 0;
     this.charSpans = [];
     this.totalKeystrokes = 0;
@@ -1044,7 +1088,10 @@ class TypingEngine {
     this.errorCount = 0;
     this.isCompleted = false;
     this.isModalOpen = false;
-    this.hiddenInput.value = '';
+    if (this.hiddenInput) {
+      this.hiddenInput.value = '';
+    }
+    this.onPauseStateChange(false);
     if (this.caret) {
       this.caret.classList.remove('typing');
     }
@@ -1056,8 +1103,11 @@ class TypingEngine {
    * so offsetLeft and offsetTop are relative to wordsContainer.
    */
   renderDOM() {
+    if (!this.wordsContainer) return;
     this.wordsContainer.innerHTML = '';
-    this.wordsContainer.appendChild(this.caret);
+    if (this.caret) {
+      this.wordsContainer.appendChild(this.caret);
+    }
 
     this.charSpans = [];
     const words = this.targetText.split(' ');
@@ -1090,9 +1140,20 @@ class TypingEngine {
     });
   }
 
-  startTimerIfNeeded() {
+  /**
+   * Keystroke activity tracker & auto-pause idle detector (3s threshold).
+   * Accumulates active typing time so pauses don't distort WPM.
+   */
+  recordKeystrokeActivity() {
+    if (this.isCompleted) return;
+
+    const now = performance.now();
+
+    // 1. Start timer on first keystroke of session
     if (!this.startTime) {
-      this.startTime = performance.now();
+      this.startTime = now;
+      this.lastActiveTime = now;
+      this.activeElapsedMs = 0;
       this.timerInterval = setInterval(() => {
         if (!this.isCompleted) {
           this.updateMetrics();
@@ -1101,19 +1162,55 @@ class TypingEngine {
 
       // Track instantaneous WPM every 2 seconds during active typing
       this.samplerInterval = setInterval(() => {
-        if (!this.isCompleted) {
+        if (!this.isCompleted && !this.isPaused) {
           this.recordInstantaneousSample();
         }
       }, 2000);
     }
+
+    // 2. If resuming from idle pause, clear paused state immediately
+    if (this.isPaused) {
+      this.isPaused = false;
+      this.lastActiveTime = now;
+      this.onPauseStateChange(false);
+    } else if (this.lastActiveTime) {
+      // Accumulate active typing elapsed time
+      this.activeElapsedMs += (now - this.lastActiveTime);
+      this.lastActiveTime = now;
+    }
+
+    // 3. Reset 3-second idle timer
+    if (this.idleTimeout) {
+      clearTimeout(this.idleTimeout);
+    }
+    this.idleTimeout = setTimeout(() => {
+      this.handleIdlePause();
+    }, 3000);
+  }
+
+  handleIdlePause() {
+    if (this.isCompleted || this.isPaused || !this.startTime) return;
+    const now = performance.now();
+    if (this.lastActiveTime) {
+      this.activeElapsedMs += Math.min(now - this.lastActiveTime, 3000);
+      this.lastActiveTime = null;
+    }
+    this.isPaused = true;
+    this.onPauseStateChange(true);
+    this.updateMetrics();
   }
 
   recordInstantaneousSample() {
     if (this.isCompleted || !this.startTime) return;
-    const elapsedSeconds = Math.max((performance.now() - this.startTime) / 1000, 0.5);
+    let totalActiveMs = this.activeElapsedMs;
+    if (!this.isPaused && this.lastActiveTime) {
+      totalActiveMs += (performance.now() - this.lastActiveTime);
+    }
+    const elapsedSeconds = Math.max(totalActiveMs / 1000, 0.5);
     const elapsedMinutes = elapsedSeconds / 60;
-    const correctChars = this.wordsContainer ? this.wordsContainer.querySelectorAll('.char.correct').length : 0;
-    const instWpm = Math.max(0, Math.round((correctChars / 5) / elapsedMinutes));
+    const currentChunkCorrect = this.wordsContainer ? this.wordsContainer.querySelectorAll('.char.correct').length : 0;
+    const totalCorrect = this.cumulativeCorrectChars + currentChunkCorrect;
+    const instWpm = Math.max(0, Math.round((totalCorrect / 5) / elapsedMinutes));
     this.instantaneousSamples.push({
       time: Math.round(elapsedSeconds),
       wpm: instWpm
@@ -1128,7 +1225,7 @@ class TypingEngine {
       return;
     }
 
-    this.startTimerIfNeeded();
+    this.recordKeystrokeActivity();
 
     // Handle Backspace
     if (e.key === 'Backspace') {
@@ -1154,7 +1251,7 @@ class TypingEngine {
 
   handleInput(e) {
     if (this.isCompleted || this.isModalOpen || !this.targetText || this.targetText.length === 0) return;
-    this.startTimerIfNeeded();
+    this.recordKeystrokeActivity();
 
     if (e.data) {
       for (const char of e.data) {
@@ -1167,7 +1264,9 @@ class TypingEngine {
     } else if (e.inputType === 'deleteContentBackward') {
       this.handleBackspace();
     }
-    this.hiddenInput.value = '';
+    if (this.hiddenInput) {
+      this.hiddenInput.value = '';
+    }
   }
 
   handleBackspace() {
@@ -1188,7 +1287,13 @@ class TypingEngine {
   handleSpace() {
     if (this.isCompleted || this.isModalOpen || !this.targetText || this.targetText.length === 0) return;
     if (this.currentIndex >= this.targetText.length) {
-      this.finishTest();
+      if (this.mode === 'timed') {
+        if (typeof this.onChunkComplete === 'function') {
+          this.onChunkComplete();
+        }
+      } else {
+        this.finishTest();
+      }
       return;
     }
 
@@ -1208,7 +1313,13 @@ class TypingEngine {
       this.updateCaretPosition();
       this.updateMetrics();
       if (this.targetText && this.targetText.length > 0 && this.currentIndex >= this.targetText.length) {
-        this.finishTest();
+        if (this.mode === 'timed') {
+          if (typeof this.onChunkComplete === 'function') {
+            this.onChunkComplete();
+          }
+        } else {
+          this.finishTest();
+        }
       }
       return;
     }
@@ -1231,7 +1342,13 @@ class TypingEngine {
       this.updateCaretPosition();
       this.updateMetrics();
       if (this.targetText && this.targetText.length > 0 && this.currentIndex >= this.targetText.length) {
-        this.finishTest();
+        if (this.mode === 'timed') {
+          if (typeof this.onChunkComplete === 'function') {
+            this.onChunkComplete();
+          }
+        } else {
+          this.finishTest();
+        }
       }
     } else {
       this.processChar(' ');
@@ -1241,7 +1358,13 @@ class TypingEngine {
   processChar(typedChar) {
     if (this.isCompleted || this.isModalOpen || !this.targetText || this.targetText.length === 0) return;
     if (this.currentIndex >= this.targetText.length) {
-      this.finishTest();
+      if (this.mode === 'timed') {
+        if (typeof this.onChunkComplete === 'function') {
+          this.onChunkComplete();
+        }
+      } else {
+        this.finishTest();
+      }
       return;
     }
 
@@ -1273,13 +1396,19 @@ class TypingEngine {
     this.updateMetrics();
 
     if (this.targetText && this.targetText.length > 0 && this.currentIndex >= this.targetText.length) {
-      this.finishTest();
+      if (this.mode === 'timed') {
+        if (typeof this.onChunkComplete === 'function') {
+          this.onChunkComplete();
+        }
+      } else {
+        this.finishTest();
+      }
     }
   }
 
   /**
-   * Translates the blinking block caret using exact offsetLeft & offsetTop.
-   * Dynamically sizes the block cursor to cover the active character with surgical precision.
+   * Translates the sharp glowing vertical I-beam caret (2px wide).
+   * Positioned cleanly before the active character with NO letter covering.
    * Tracks seamlessly across word wraps and window resizing.
    */
   updateCaretPosition() {
@@ -1292,32 +1421,20 @@ class TypingEngine {
       if (activeSpan) {
         const left = activeSpan.offsetLeft;
         const top = activeSpan.offsetTop;
-        if (activeSpan.offsetWidth > 0) {
-          this.caret.style.width = `${activeSpan.offsetWidth}px`;
-        }
-        if (activeSpan.offsetHeight > 0) {
-          this.caret.style.height = `${activeSpan.offsetHeight}px`;
-          this.caret.style.transform = `translate(${left}px, ${top}px)`;
-        } else {
-          const cy = activeSpan.offsetTop + (activeSpan.offsetHeight - this.caret.offsetHeight) / 2;
-          this.caret.style.transform = `translate(${left}px, ${cy}px)`;
-        }
+        const h = activeSpan.offsetHeight || 26;
+        this.caret.style.width = '2px';
+        this.caret.style.height = `${h}px`;
+        this.caret.style.transform = `translate(${left}px, ${top}px)`;
       }
     } else if (this.charSpans.length > 0) {
       const lastSpan = this.charSpans[this.charSpans.length - 1];
       if (lastSpan) {
         const left = lastSpan.offsetLeft + lastSpan.offsetWidth;
         const top = lastSpan.offsetTop;
-        if (lastSpan.offsetWidth > 0) {
-          this.caret.style.width = `${lastSpan.offsetWidth}px`;
-        }
-        if (lastSpan.offsetHeight > 0) {
-          this.caret.style.height = `${lastSpan.offsetHeight}px`;
-          this.caret.style.transform = `translate(${left}px, ${top}px)`;
-        } else {
-          const cy = lastSpan.offsetTop + (lastSpan.offsetHeight - this.caret.offsetHeight) / 2;
-          this.caret.style.transform = `translate(${left}px, ${cy}px)`;
-        }
+        const h = lastSpan.offsetHeight || 26;
+        this.caret.style.width = '2px';
+        this.caret.style.height = `${h}px`;
+        this.caret.style.transform = `translate(${left}px, ${top}px)`;
       }
     } else {
       this.caret.style.transform = `translate(0px, 0px)`;
@@ -1325,14 +1442,31 @@ class TypingEngine {
   }
 
   computeMetrics() {
-    const elapsedSeconds = this.startTime ? Math.max((performance.now() - this.startTime) / 1000, 0.5) : 0;
-    const elapsedMinutes = elapsedSeconds / 60;
+    let totalActiveMs = this.activeElapsedMs;
+    if (!this.isPaused && this.lastActiveTime) {
+      totalActiveMs += (performance.now() - this.lastActiveTime);
+    }
+    const elapsedSeconds = this.startTime ? Math.max(totalActiveMs / 1000, 0) : 0;
 
-    const correctChars = this.wordsContainer.querySelectorAll('.char.correct').length;
+    let remainingSeconds = 0;
+    if (this.mode === 'timed') {
+      remainingSeconds = Math.max(0, this.timeLimit - Math.floor(elapsedSeconds));
+      if (this.startTime && remainingSeconds <= 0 && !this.isCompleted) {
+        setTimeout(() => this.finishTest(), 0);
+      }
+    }
+
+    const effectiveSeconds = (this.mode === 'timed' && this.isCompleted) 
+      ? this.timeLimit 
+      : Math.max(elapsedSeconds, 0.5);
+    const elapsedMinutes = effectiveSeconds / 60;
+
+    const currentChunkCorrect = this.wordsContainer ? this.wordsContainer.querySelectorAll('.char.correct').length : 0;
+    const totalCorrectChars = this.cumulativeCorrectChars + currentChunkCorrect;
     const totalTargetChars = this.targetText.length;
 
-    const wpm = elapsedMinutes > 0 ? Math.round((correctChars / 5) / elapsedMinutes) : 0;
-    const rawWpm = elapsedMinutes > 0 ? Math.round((this.totalKeystrokes / 5) / elapsedMinutes) : 0;
+    const wpm = (this.startTime && elapsedMinutes > 0) ? Math.round((totalCorrectChars / 5) / elapsedMinutes) : 0;
+    const rawWpm = (this.startTime && elapsedMinutes > 0) ? Math.round((this.totalKeystrokes / 5) / elapsedMinutes) : 0;
 
     const accuracy = this.totalKeystrokes > 0 
       ? Math.max(0, Math.min(100, Math.round((this.correctKeystrokes / this.totalKeystrokes) * 100))) 
@@ -1347,7 +1481,11 @@ class TypingEngine {
       rawWpm: Math.max(0, rawWpm),
       accuracy,
       elapsedSeconds: Math.floor(elapsedSeconds),
-      correctChars,
+      remainingSeconds: this.mode === 'timed' ? remainingSeconds : 0,
+      isPaused: this.isPaused,
+      mode: this.mode,
+      timeLimit: this.timeLimit,
+      correctChars: totalCorrectChars,
       totalTargetChars,
       totalKeystrokes: this.totalKeystrokes,
       errorCount: this.errorCount,
@@ -1363,10 +1501,9 @@ class TypingEngine {
 
   finishTest() {
     if (this.isCompleted) return;
-    // Guard: ONLY trigger when targetText.length > 0 and currentIndex >= targetText.length
-    // Never trigger on empty 0 / 0 state during initial load or API fetch
+    // Guard: ONLY trigger when targetText.length > 0
     if (!this.targetText || this.targetText.length === 0) return;
-    if (this.currentIndex < this.targetText.length) return;
+    if (this.mode !== 'timed' && this.currentIndex < this.targetText.length) return;
 
     this.isCompleted = true;
     if (this.timerInterval) {
@@ -1377,6 +1514,16 @@ class TypingEngine {
       clearInterval(this.samplerInterval);
       this.samplerInterval = null;
     }
+    if (this.idleTimeout) {
+      clearTimeout(this.idleTimeout);
+      this.idleTimeout = null;
+    }
+    if (!this.isPaused && this.lastActiveTime) {
+      this.activeElapsedMs += (performance.now() - this.lastActiveTime);
+      this.lastActiveTime = null;
+    }
+    this.isPaused = false;
+    this.onPauseStateChange(false);
     this.recordInstantaneousSample();
 
     if (this.caret) {
@@ -1426,8 +1573,13 @@ class HeaderController {
             window.history.replaceState({}, '', url.toString());
           } catch (err) {}
         } else {
-          // Navigate to practice page with topic query
-          window.location.href = `practice.html?topic=${encodeURIComponent(query)}`;
+          // Navigate to practice page with topic query and active mode/time
+          const storedMode = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_mode') : null;
+          const storedTime = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_time') : null;
+          let targetUrl = `practice.html?topic=${encodeURIComponent(query)}`;
+          if (storedMode) targetUrl += `&mode=${encodeURIComponent(storedMode)}`;
+          if (storedMode === 'timed' && storedTime) targetUrl += `&time=${encodeURIComponent(storedTime)}`;
+          window.location.href = targetUrl;
         }
       });
     }
@@ -1444,7 +1596,12 @@ class HeaderController {
             window.history.replaceState({}, '', url.toString());
           } catch (err) {}
         } else {
-          window.location.href = 'practice.html?topic=random';
+          const storedMode = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_mode') : null;
+          const storedTime = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_time') : null;
+          let targetUrl = 'practice.html?topic=random';
+          if (storedMode) targetUrl += `&mode=${encodeURIComponent(storedMode)}`;
+          if (storedMode === 'timed' && storedTime) targetUrl += `&time=${encodeURIComponent(storedTime)}`;
+          window.location.href = targetUrl;
         }
       });
     }
@@ -1503,13 +1660,17 @@ class HeaderController {
 // ============================================================================
 class HomePageController {
   constructor() {
-    this.selectedMode = 'paragraph'; // 'paragraph' | 'timed'
-    this.selectedDuration = 60; // 15 | 30 | 60 | 120
+    const storedMode = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_mode') : null;
+    const storedTime = (typeof sessionStorage !== 'undefined') ? parseInt(sessionStorage.getItem('typer_time'), 10) : null;
+
+    this.selectedMode = (storedMode === 'timed' || storedMode === 'paragraph') ? storedMode : 'paragraph';
+    this.selectedDuration = (storedTime && [15, 30, 60, 120].includes(storedTime)) ? storedTime : 60;
     this.selectedTopic = 'Quantum Mechanics';
     this.showMovingAvg = true;
     this.sessionLogs = AnalyticsService.getSessions();
 
     this.initDOMElements();
+    this.restoreStoredState();
     this.bindEvents();
     this.renderAnalytics();
   }
@@ -1535,6 +1696,28 @@ class HomePageController {
     this.sessionLogCount = document.getElementById('session-log-count');
   }
 
+  restoreStoredState() {
+    if (this.selectedMode === 'timed') {
+      this.modeParagraphCard?.classList.remove('selected');
+      this.modeTimedCard?.classList.add('selected');
+      this.timedDurationSelector?.classList.remove('hidden');
+    } else {
+      this.modeTimedCard?.classList.remove('selected');
+      this.modeParagraphCard?.classList.add('selected');
+      this.timedDurationSelector?.classList.add('hidden');
+    }
+
+    this.durationPills.forEach(pill => {
+      const dur = parseInt(pill.dataset.duration, 10);
+      pill.classList.toggle('selected', dur === this.selectedDuration);
+    });
+
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('typer_mode', this.selectedMode);
+      sessionStorage.setItem('typer_time', this.selectedDuration);
+    }
+  }
+
   bindEvents() {
     // Mode Selection
     if (this.modeParagraphCard && this.modeTimedCard) {
@@ -1548,6 +1731,9 @@ class HomePageController {
         this.durationPills.forEach(p => p.classList.remove('selected'));
         pill.classList.add('selected');
         this.selectedDuration = parseInt(pill.dataset.duration, 10) || 60;
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('typer_time', this.selectedDuration);
+        }
         this.updateStartUrl();
       });
     });
@@ -1625,7 +1811,14 @@ class HomePageController {
 
   selectMode(mode) {
     this.selectedMode = mode;
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('typer_mode', mode);
+    }
+
     if (mode === 'timed') {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('typer_time', this.selectedDuration);
+      }
       this.modeParagraphCard?.classList.remove('selected');
       this.modeTimedCard?.classList.add('selected');
       if (this.timedDurationSelector) {
@@ -1648,6 +1841,7 @@ class HomePageController {
     }
     params.set('mode', this.selectedMode);
     if (this.selectedMode === 'timed') {
+      params.set('time', this.selectedDuration);
       params.set('duration', this.selectedDuration);
     }
     return `practice.html?${params.toString()}`;
@@ -1735,8 +1929,16 @@ class PracticePageController {
     this.isModalOpen = false;
 
     this.urlParams = new URLSearchParams(window.location.search);
-    this.mode = this.urlParams.get('mode') || 'paragraph'; // 'paragraph' | 'timed' | 'drill'
-    this.timeLimit = parseInt(this.urlParams.get('duration'), 10) || 60;
+    const urlMode = this.urlParams.get('mode');
+    const storageMode = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_mode') : null;
+    this.mode = urlMode || storageMode || 'paragraph'; // 'paragraph' | 'timed' | 'drill'
+
+    const rawTime = this.urlParams.get('time') || this.urlParams.get('duration') || ((typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_time') : null);
+    this.timeLimit = parseInt(rawTime, 10) || 60;
+    if (isNaN(this.timeLimit) || this.timeLimit <= 0) {
+      this.timeLimit = 60;
+    }
+
     this.requestedTopic = this.urlParams.get('topic') || '';
 
     this.initDOMElements();
@@ -1755,6 +1957,16 @@ class PracticePageController {
     this.arenaModePill = document.getElementById('arena-mode-pill');
     this.paragraphCounterPill = document.getElementById('paragraph-counter-pill');
 
+    if (this.arenaModePill) {
+      if (this.mode === 'timed') {
+        this.arenaModePill.textContent = `Timed Sprint (${this.timeLimit}s)`;
+      } else if (this.mode === 'drill') {
+        this.arenaModePill.textContent = 'Weak Keys Drill';
+      } else {
+        this.arenaModePill.textContent = 'Complete Paragraph';
+      }
+    }
+
     // Arena HUD
     this.statWpm = document.getElementById('stat-wpm');
     this.statAccuracy = document.getElementById('stat-accuracy');
@@ -1762,6 +1974,14 @@ class PracticePageController {
     this.statProgress = document.getElementById('stat-progress');
     this.hudTimeLabel = document.getElementById('hud-time-label');
     this.idleBadge = document.getElementById('idle-status-badge');
+
+    // Initialize immediate clean time display (never NaN:NaN)
+    if (this.hudTimeLabel) {
+      this.hudTimeLabel.textContent = (this.mode === 'timed') ? 'Remaining' : 'Time';
+    }
+    if (this.statTime) {
+      this.statTime.textContent = (this.mode === 'timed') ? this.formatTime(this.timeLimit) : '00:00';
+    }
 
     // Status Banner / Loading
     this.statusBanner = document.getElementById('status-banner');
@@ -1805,12 +2025,23 @@ class PracticePageController {
       timeLimit: this.timeLimit,
       onMetricsUpdate: (metrics) => this.renderHUD(metrics),
       onComplete: (finalMetrics) => this.showResultsModal(finalMetrics),
+      onChunkComplete: () => this.handleTimedChunkAdvance(),
       onPauseStateChange: (isPaused) => {
         if (this.idleBadge) {
           this.idleBadge.classList.toggle('hidden', !isPaused);
         }
       }
     });
+  }
+
+  handleTimedChunkAdvance() {
+    if (this.mode !== 'timed' || this.engine.isCompleted) return;
+    this.currentChunkIndex = (this.currentChunkIndex + 1) % this.chunks.length;
+    const nextChunk = this.chunks[this.currentChunkIndex];
+    if (this.paragraphCounterPill) {
+      this.paragraphCounterPill.textContent = `Paragraph ${this.currentChunkIndex + 1} of ${this.chunks.length}`;
+    }
+    this.engine.loadNextChunkSeamlessly(nextChunk);
   }
 
   bindUIEvents() {
@@ -1942,7 +2173,7 @@ class PracticePageController {
         return;
       }
 
-      // Escape to restart current chunk
+      // Escape to restart current chunk / timed sprint
       if (e.key === 'Escape') {
         const headerInput = document.getElementById('header-search-input');
         if (document.activeElement !== headerInput) {
@@ -2099,6 +2330,10 @@ class PracticePageController {
     if (this.hudTimeLabel) {
       this.hudTimeLabel.textContent = (this.mode === 'timed') ? 'Remaining' : 'Time';
     }
+
+    if (this.statTime) {
+      this.statTime.textContent = (this.mode === 'timed') ? this.formatTime(this.timeLimit) : '00:00';
+    }
   }
 
   loadActiveChunk() {
@@ -2145,8 +2380,9 @@ class PracticePageController {
   }
 
   formatTime(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const safeSeconds = (typeof seconds === 'number' && !isNaN(seconds)) ? Math.max(0, Math.floor(seconds)) : 0;
+    const mins = Math.floor(safeSeconds / 60);
+    const secs = safeSeconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
 
@@ -2156,7 +2392,10 @@ class PracticePageController {
 
     if (this.statTime) {
       if (this.mode === 'timed') {
-        this.statTime.textContent = this.formatTime(metrics.remainingSeconds);
+        const remaining = (this.engine && !this.engine.startTime)
+          ? this.timeLimit
+          : (typeof metrics.remainingSeconds === 'number' && !isNaN(metrics.remainingSeconds) ? metrics.remainingSeconds : this.timeLimit);
+        this.statTime.textContent = this.formatTime(remaining);
       } else {
         this.statTime.textContent = this.formatTime(metrics.elapsedSeconds);
       }
@@ -2183,7 +2422,10 @@ class PracticePageController {
 
     if (this.resWpm) this.resWpm.textContent = finalMetrics.wpm;
     if (this.resAccuracy) this.resAccuracy.textContent = `${finalMetrics.accuracy}%`;
-    if (this.resTime) this.resTime.textContent = this.formatTime(finalMetrics.elapsedSeconds);
+    if (this.resTime) {
+      const displaySeconds = (this.mode === 'timed') ? this.timeLimit : finalMetrics.elapsedSeconds;
+      this.resTime.textContent = this.formatTime(displaySeconds);
+    }
     if (this.resRawWpm) this.resRawWpm.textContent = finalMetrics.rawWpm;
     if (this.resErrors) this.resErrors.textContent = finalMetrics.errorCount;
     if (this.resChars) this.resChars.textContent = `${finalMetrics.correctChars} / ${finalMetrics.totalTargetChars}`;
@@ -2246,7 +2488,7 @@ class PracticePageController {
       wpm: metrics.wpm,
       rawWpm: metrics.rawWpm,
       accuracy: metrics.accuracy,
-      elapsedSeconds: metrics.elapsedSeconds,
+      elapsedSeconds: (this.mode === 'timed') ? this.timeLimit : metrics.elapsedSeconds,
       errorCount: metrics.errorCount,
       timestamp: timeStr,
       date: dateStr,
