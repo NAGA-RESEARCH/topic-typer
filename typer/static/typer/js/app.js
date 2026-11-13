@@ -780,103 +780,19 @@ const WikipediaService = {
 };
 
 // ============================================================================
-// 3. SOUND SYNTHESIZER SERVICE (Web Audio API)
+// 3. SOUND SYNTHESIZER SERVICE (Web Audio API Engine in sound.js)
 // ============================================================================
-const SoundService = {
+const SoundService = window.SoundService || {
   audioCtx: null,
   enabled: true,
-
-  init() {
-    try {
-      const stored = localStorage.getItem('topictyper_sound');
-      if (stored !== null) {
-        this.enabled = (stored === '1');
-      }
-    } catch (e) {}
-
-    if (!this.audioCtx && typeof (window.AudioContext || window.webkitAudioContext) !== 'undefined') {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      this.audioCtx = new AudioContextClass();
-    }
-  },
-
-  toggle() {
-    this.enabled = !this.enabled;
-    try {
-      localStorage.setItem('topictyper_sound', this.enabled ? '1' : '0');
-    } catch (e) {}
-    return this.enabled;
-  },
-
-  playKeyClick(isError = false) {
-    if (!this.enabled) return;
-    try {
-      if (!this.audioCtx) this.init();
-      if (this.audioCtx && this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume();
-      }
-      if (!this.audioCtx) return;
-
-      const ctx = this.audioCtx;
-      const now = ctx.currentTime;
-
-      if (isError) {
-        // Soft low-frequency tap on error (tactile, non-jarring feedback)
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(115, now);
-        osc.frequency.exponentialRampToValueAtTime(50, now + 0.05);
-
-        gain.gain.setValueAtTime(0.065, now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.055);
-      } else {
-        // Realistic Mechanical Switch "Thock":
-        // 1. High-frequency click transient (3-6ms) with natural pitch variation
-        const oscClick = ctx.createOscillator();
-        const clickGain = ctx.createGain();
-        oscClick.type = 'triangle';
-        const randPitch = 230 + Math.random() * 35;
-        oscClick.frequency.setValueAtTime(1850 + Math.random() * 350, now);
-        oscClick.frequency.exponentialRampToValueAtTime(380, now + 0.008);
-        clickGain.gain.setValueAtTime(0.038, now);
-        clickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.008);
-        oscClick.connect(clickGain);
-        clickGain.connect(ctx.destination);
-        oscClick.start(now);
-        oscClick.stop(now + 0.009);
-
-        // 2. Resonant switch bottom-out "thock" with lowpass filter
-        const oscThock = ctx.createOscillator();
-        const thockGain = ctx.createGain();
-        const filter = ctx.createBiquadFilter();
-
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(650, now);
-        filter.Q.setValueAtTime(3.2, now);
-
-        oscThock.type = 'sine';
-        oscThock.frequency.setValueAtTime(randPitch, now);
-        oscThock.frequency.exponentialRampToValueAtTime(randPitch * 0.48, now + 0.032);
-
-        thockGain.gain.setValueAtTime(0.06, now);
-        thockGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.032);
-
-        oscThock.connect(filter);
-        filter.connect(thockGain);
-        thockGain.connect(ctx.destination);
-        oscThock.start(now);
-        oscThock.stop(now + 0.035);
-      }
-    } catch (e) {
-      // Audio autoplay policy or unavailable
-    }
-  }
+  profile: 'creamy',
+  init() {},
+  toggle() { return true; },
+  setProfile(p) { return p; },
+  playKeyClick(isError = false, keyType = 'char') {},
+  playKeystroke(keyType = 'char', isError = false) {},
+  playUITick() {},
+  playCompletion(isNewPB = false) {}
 };
 
 // ============================================================================
@@ -2018,7 +1934,7 @@ class TypingEngine {
           span.className = 'char untyped';
         }
       }
-      SoundService.playKeyClick(false);
+      SoundService.playKeystroke('backspace', false);
       this.updateCaretPosition();
       this.updateMetrics();
     }
@@ -2048,7 +1964,7 @@ class TypingEngine {
       if (span) {
         span.className = 'char correct char-space';
       }
-      SoundService.playKeyClick(false);
+      SoundService.playKeystroke('space', false);
       this.recordSessionKey(' ', true);
       this.activeCharIndex++;
       this.updateCaretPosition();
@@ -2085,7 +2001,7 @@ class TypingEngine {
         this.errorCount++;
         this.recordSessionKey(this.targetText[i], false);
       }
-      SoundService.playKeyClick(true);
+      SoundService.playKeystroke('space', true);
       this.activeCharIndex = nextSpaceIdx + 1;
       this.updateCaretPosition();
       this.updateMetrics();
@@ -2124,6 +2040,16 @@ class TypingEngine {
     this.totalKeystrokes++;
     const isMatch = (typedChar === targetChar);
 
+    // Determine acoustic key profile category
+    let keyType = 'char';
+    if (typedChar === ' ' || targetChar === ' ') {
+      keyType = 'space';
+    } else if (typedChar === '\n' || targetChar === '\n') {
+      keyType = 'enter';
+    } else if (typedChar === '\t') {
+      keyType = 'tab';
+    }
+
     if (isMatch) {
       this.correctKeystrokes++;
       this.currentChunkCorrectChars++;
@@ -2136,7 +2062,7 @@ class TypingEngine {
           span.className = 'char correct';
         }
       }
-      SoundService.playKeyClick(false);
+      SoundService.playKeystroke(keyType, false);
       this.recordSessionKey(targetChar, true);
     } else {
       this.errorCount++;
@@ -2149,7 +2075,7 @@ class TypingEngine {
           span.className = 'char incorrect';
         }
       }
-      SoundService.playKeyClick(true);
+      SoundService.playKeystroke(keyType, true);
       this.recordSessionKey(targetChar, false);
     }
 
@@ -2372,6 +2298,10 @@ class HeaderController {
 
   initSound() {
     if (!this.soundToggleBtn) return;
+    // SoundUIController in sound.js manages the dropdown menu and profiles.
+    if (window.SoundUIController) {
+      return;
+    }
     this.updateSoundBtn();
     this.soundToggleBtn.addEventListener('click', () => {
       SoundService.toggle();
@@ -2381,6 +2311,10 @@ class HeaderController {
 
   updateSoundBtn() {
     if (!this.soundToggleBtn) return;
+    if (window.SoundUIController && typeof window.SoundUIController.updateUI === 'function') {
+      window.SoundUIController.updateUI();
+      return;
+    }
     const enabled = SoundService.enabled;
     this.soundToggleBtn.classList.toggle('muted', !enabled);
     const iconSpan = this.soundToggleBtn.querySelector('.btn-icon');
@@ -2608,6 +2542,7 @@ class HomePageController {
     if (!this.topicCards) return;
     this.topicCards.forEach(card => {
       card.addEventListener('click', () => {
+        SoundService.playUITick();
         // Toggle active selection exclusively to this card
         this.topicCards.forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
@@ -2676,6 +2611,7 @@ class HomePageController {
     // Duration Selection
     this.durationPills.forEach(pill => {
       pill.addEventListener('click', () => {
+        SoundService.playUITick();
         this.durationPills.forEach(p => p.classList.remove('selected'));
         pill.classList.add('selected');
         this.selectedDuration = parseInt(pill.dataset.duration, 10) || 60;
@@ -2732,6 +2668,7 @@ class HomePageController {
     // Content Source Tabs (Wikipedia Topics vs Custom / Code)
     if (this.tabSourceWiki && this.tabSourceCustom) {
       this.tabSourceWiki.addEventListener('click', () => {
+        SoundService.playUITick();
         this.tabSourceWiki.classList.add('active');
         this.tabSourceWiki.setAttribute('aria-selected', 'true');
         this.tabSourceCustom.classList.remove('active');
@@ -2741,6 +2678,7 @@ class HomePageController {
       });
 
       this.tabSourceCustom.addEventListener('click', () => {
+        SoundService.playUITick();
         this.tabSourceCustom.classList.add('active');
         this.tabSourceCustom.setAttribute('aria-selected', 'true');
         this.tabSourceWiki.classList.remove('active');
@@ -2761,6 +2699,7 @@ class HomePageController {
     // Custom Subtabs (Paste Text vs Code Snippets)
     if (this.subtabBtnText && this.subtabBtnCode) {
       this.subtabBtnText.addEventListener('click', () => {
+        SoundService.playUITick();
         this.subtabBtnText.classList.add('active');
         this.subtabBtnCode.classList.remove('active');
         this.subpaneText?.classList.remove('hidden');
@@ -2768,6 +2707,7 @@ class HomePageController {
       });
 
       this.subtabBtnCode.addEventListener('click', () => {
+        SoundService.playUITick();
         this.subtabBtnCode.classList.add('active');
         this.subtabBtnText.classList.remove('active');
         this.subpaneCode?.classList.remove('hidden');
@@ -2817,6 +2757,7 @@ class HomePageController {
     if (this.langPills && this.langPills.length > 0) {
       this.langPills.forEach(pill => {
         pill.addEventListener('click', () => {
+          SoundService.playUITick();
           this.langPills.forEach(p => p.classList.remove('active'));
           pill.classList.add('active');
           this.activeCodeLang = pill.dataset.lang || 'python';
@@ -2881,6 +2822,7 @@ class HomePageController {
 
       this.snippetChipsContainer.querySelectorAll('.snippet-chip').forEach(btn => {
         btn.addEventListener('click', () => {
+          SoundService.playUITick();
           this.activeSnippetIdx = parseInt(btn.dataset.idx, 10) || 0;
           this.renderCodeSnippetsUI();
         });
@@ -2896,6 +2838,7 @@ class HomePageController {
   }
 
   selectMode(mode) {
+    SoundService.playUITick();
     this.selectedMode = mode;
     if (typeof sessionStorage !== 'undefined') {
       sessionStorage.setItem('typer_mode', mode);
@@ -3712,6 +3655,21 @@ class PracticePageController {
       }
     }
 
+    // Milestone Sound Effect: Ascending harmonic chime or 5-note sparkle fanfare if PB
+    let isNewPB = false;
+    try {
+      const prevPbStr = localStorage.getItem('topictyper_pb_wpm');
+      const prevPb = prevPbStr ? parseFloat(prevPbStr) : 0;
+      if (finalMetrics.wpm > prevPb && prevPb > 0) {
+        isNewPB = true;
+      }
+      if (finalMetrics.wpm > prevPb) {
+        localStorage.setItem('topictyper_pb_wpm', String(Math.round(finalMetrics.wpm)));
+      }
+    } catch (e) {}
+
+    SoundService.playCompletion(isNewPB);
+
     this.recordSessionLog(finalMetrics);
     this.resultsModal?.classList.remove('hidden');
 
@@ -3820,7 +3778,7 @@ class TopicTyperApp extends PracticePageController {}
 if (typeof window !== 'undefined') {
   window.TextSanitizer = TextSanitizer;
   window.WikipediaService = WikipediaService;
-  window.SoundService = SoundService;
+  window.SoundService = window.SoundService || SoundService;
   window.AnalyticsService = AnalyticsService;
   window.TypingEngine = TypingEngine;
   window.HeaderController = HeaderController;

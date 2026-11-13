@@ -46,6 +46,23 @@ TopicTyper is structured as a full-featured Django web application with a core a
 
 ---
 
+## 🎧 Procedural Web Audio API Sound Engine
+
+TopicTyper features a zero-dependency, procedural acoustic synthesis sound studio modeled after mechanical switches and retro typewriters:
+
+- **Dynamics Compression & Clean Master Bus**: Powered by a `DynamicsCompressorNode` and `GainNode` to ensure rapid 100+ WPM typing bursts never distort or clip.
+- **Organic Micro-Randomization**: Every keystroke applies a subtle `±6%` pitch frequency variation and `±5%` gain jitter to emulate natural physical switch variations.
+- **Differentiated Key Modeling**: Distinct acoustic profiles for regular character keys, spacebars (deep resonant hollow thump with stabilizer rattle), backspace (softer reverse-feel tap), enter/tab (solid clack return), and mistakes (gentle muted ~95 Hz thud).
+- **Selectable Switch Profiles**:
+  - **Creamy Thock (Default)**: Deep PBT switch punch (`~240 Hz` down to `110 Hz`).
+  - **Tactile Brown**: Balanced mid-range bump (`~330 Hz` down to `160 Hz`).
+  - **Clicky Blue**: Sharp high-frequency click-jacket snap (`2.4 kHz` transient).
+  - **Retro Typewriter**: Heavy vintage strike clack with metallic carriage return bell (`2093 Hz C7`).
+  - **Theme Sync (Auto)**: Dynamically adjusts acoustic textures based on active theme (cyber synth blips in Hacking, arcade pops in Funny/Arcade, IDE taps in Coding, creamy thock in Midnight).
+- **Milestone Chimes & Fanfares**: Harmonic chord completion chimes (`C5 - E5 - G5`) and celebratory 5-note sparkle fanfares (`C5 -> E5 -> G5 -> B5 -> C6`) whenever a new Personal Best WPM is achieved.
+
+---
+
 ## ⌨️ Keyboard Shortcuts
 
 | Shortcut | Scope | Action |

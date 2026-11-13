@@ -179,3 +179,18 @@ class TopicTyperViewTests(TestCase):
         # Database index checks
         self.assertTrue(TypingSession._meta.get_field('created_at').db_index)
         self.assertTrue(CachedTopic._meta.get_field('title').db_index)
+
+    def test_sound_engine_ui_and_assets(self):
+        """Verify Sound Studio dropdown, profile options, and script inclusion."""
+        for view_name in ['home', 'practice', 'about']:
+            response = self.client.get(reverse(view_name))
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, 'sound.js')
+            self.assertContains(response, 'id="sound-toggle-btn"')
+            self.assertContains(response, 'id="sound-dropdown-menu"')
+            self.assertContains(response, 'id="sound-master-toggle"')
+            self.assertContains(response, 'data-profile="creamy"')
+            self.assertContains(response, 'data-profile="brown"')
+            self.assertContains(response, 'data-profile="blue"')
+            self.assertContains(response, 'data-profile="typewriter"')
+            self.assertContains(response, 'data-profile="sync"')

@@ -96,10 +96,59 @@
           </div>
         </div>
 
-        <button type="button" id="sound-toggle-btn" class="header-btn" title="Toggle Typing Sounds" aria-label="Toggle typing sound">
-          <span class="btn-icon">🔊</span>
-          <span class="btn-label">Sound: On</span>
-        </button>
+        <!-- Sound Engine Control (Toggle & Profile Picker) -->
+        <div class="sound-dropdown-container">
+          <button type="button" id="sound-toggle-btn" class="header-btn sound-toggle-btn" aria-label="Sound Settings" aria-haspopup="true" aria-expanded="false" title="Typing Sound Profile & Settings">
+            <span class="btn-icon" id="sound-active-icon">🔊</span>
+            <span class="btn-label" id="sound-active-profile">Creamy</span>
+            <span class="theme-arrow" aria-hidden="true">▾</span>
+          </button>
+          <div id="sound-dropdown-menu" class="sound-dropdown-menu hidden" role="menu">
+            <div class="sound-menu-header">
+              <span class="sound-menu-title">Switch Audio Profile</span>
+              <button type="button" id="sound-master-toggle" class="sound-mute-pill" title="Mute or Unmute Typing Audio">
+                <span id="sound-mute-label">Enabled</span>
+              </button>
+            </div>
+            <div class="sound-profile-options">
+              <button type="button" class="sound-option-btn selected" data-profile="creamy" role="menuitem">
+                <span class="sound-option-icon">🧈</span>
+                <div class="sound-option-meta">
+                  <span class="sound-option-name">Creamy Thock</span>
+                  <span class="sound-option-desc">Deep PBT switch punch</span>
+                </div>
+              </button>
+              <button type="button" class="sound-option-btn" data-profile="brown" role="menuitem">
+                <span class="sound-option-icon">🌰</span>
+                <div class="sound-option-meta">
+                  <span class="sound-option-name">Tactile Brown</span>
+                  <span class="sound-option-desc">Balanced mid-range bump</span>
+                </div>
+              </button>
+              <button type="button" class="sound-option-btn" data-profile="blue" role="menuitem">
+                <span class="sound-option-icon">💎</span>
+                <div class="sound-option-meta">
+                  <span class="sound-option-name">Clicky Blue</span>
+                  <span class="sound-option-desc">Crisp click-jacket snap</span>
+                </div>
+              </button>
+              <button type="button" class="sound-option-btn" data-profile="typewriter" role="menuitem">
+                <span class="sound-option-icon">📜</span>
+                <div class="sound-option-meta">
+                  <span class="sound-option-name">Retro Typewriter</span>
+                  <span class="sound-option-desc">Vintage clack & carriage bell</span>
+                </div>
+              </button>
+              <button type="button" class="sound-option-btn" data-profile="sync" role="menuitem">
+                <span class="sound-option-icon">✨</span>
+                <div class="sound-option-meta">
+                  <span class="sound-option-name">Theme Sync (Auto)</span>
+                  <span class="sound-option-desc">Adapts to visual theme</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
         <a href="{% url 'about' %}" class="header-btn nav-btn-about {% block about_active %}{% endblock %}" title="About TopicTyper & Naga Research Lab">
           <span>About</span>
         </a>
@@ -159,6 +208,7 @@
 
   {% block modals %}{% endblock %}
 
+  <script src="{% static 'typer/js/sound.js' %}"></script>
   <script src="{% static 'typer/js/app.js' %}"></script>
   {% block extra_scripts %}{% endblock %}
 </body>
