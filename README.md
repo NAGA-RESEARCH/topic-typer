@@ -1,8 +1,8 @@
-# TopicTyper v5.0 — Learn While You Type
+# TopicTyper v6.0 — Learn While You Type
 
 An open-learning typing & reading experiment built by **Naga Research Lab**. Learn interesting Wikipedia topics and master developer typing speed across realistic programming languages and algorithms.
 
-![Version](https://img.shields.io/badge/Version-v5.0-38BDF8?style=flat-square&labelColor=0B1120)
+![Version](https://img.shields.io/badge/Version-v6.0-38BDF8?style=flat-square&labelColor=0B1120)
 ![Theme](https://img.shields.io/badge/Themes-Midnight%20%7C%20Coding%20%7C%20Hacking%20%7C%20Arcade-0B1120?style=flat-square&labelColor=0B1120&color=38BDF8)
 ![Built By](https://img.shields.io/badge/Built%20By-Naga%20Research%20Lab-10B981?style=flat-square&labelColor=131C31)
 ![Backend](https://img.shields.io/badge/Backend-Django%206%20%2F%20SQLite3-38BDF8?style=flat-square&labelColor=131C31)
@@ -10,7 +10,7 @@ An open-learning typing & reading experiment built by **Naga Research Lab**. Lea
 
 ---
 
-## 🌟 What's New in TopicTyper v5.0
+## 🌟 What's New in TopicTyper v6.0
 
 ### 1. Bug-Free Keystroke Engine & No Code Overflow
 
