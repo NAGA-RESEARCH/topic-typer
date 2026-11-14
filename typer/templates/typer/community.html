@@ -1,0 +1,237 @@
+{% extends 'typer/base.html' %}
+{% load static %}
+
+{% block title %}Community & Feedback Hub — TopicTyper v6.0{% endblock %}
+{% block meta_description %}Suggest new Wikipedia topics, vote on feature ideas, report issues, and discuss typing mechanics with the TopicTyper community.{% endblock %}
+{% block brand_subtitle %}Community &amp; Feedback Hub{% endblock %}
+{% block community_active %}active{% endblock %}
+
+{% block content %}
+<main class="community-shell" id="community-hub">
+  <!-- Community Hero Header -->
+  <header class="community-hero-card">
+    <div class="community-hero-content">
+      <div class="community-hero-badge">
+        <span class="badge-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </span>
+        <span>Open Discussion Board</span>
+      </div>
+      <h1 class="community-title">Community &amp; Feedback Hub</h1>
+      <p class="community-subtitle">
+        Propose feature concepts, request Wikipedia encyclopedia topics, report bugs, and exchange typing techniques. Open for everyone to read; sign in to post and vote.
+      </p>
+    </div>
+
+    <div class="community-hero-actions">
+      {% if user.is_authenticated %}
+      <button type="button" id="toggle-post-composer-btn" class="btn btn-primary btn-glow">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <span>New Discussion</span>
+      </button>
+      {% else %}
+      <button type="button" class="btn btn-primary btn-glow auth-locked-btn" id="guest-compose-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <span>New Discussion</span>
+      </button>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Discussion Composer Card (Collapsible for authenticated users) -->
+  {% if user.is_authenticated %}
+  <section id="community-composer-card" class="community-composer-card hidden" aria-label="Create New Discussion">
+    <div class="composer-card-header">
+      <h3 class="composer-title">Create a Discussion Post</h3>
+      <button type="button" id="close-composer-btn" class="composer-close-btn" aria-label="Close composer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <form method="POST" action="{% url 'community_post_create' %}" class="composer-form" id="community-post-form">
+      {% csrf_token %}
+      <div class="form-row composer-row">
+        <div class="form-group form-group-flex">
+          <label for="post-title" class="form-label">Discussion Title</label>
+          <input 
+            type="text" 
+            id="post-title" 
+            name="title" 
+            class="form-input" 
+            placeholder="e.g., Add Quantum Cryptography & QKD algorithms" 
+            required 
+            maxlength="255"
+          />
+        </div>
+
+        <div class="form-group form-group-cat">
+          <label for="post-category" class="form-label">Category</label>
+          <select id="post-category" name="category" class="form-select">
+            <option value="Feature Idea">Feature Idea</option>
+            <option value="Topic Request">Topic Request</option>
+            <option value="Bug Report">Bug Report</option>
+            <option value="General" selected>General</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="post-body" class="form-label">Details / Description</label>
+        <textarea 
+          id="post-body" 
+          name="body" 
+          class="form-textarea" 
+          rows="4" 
+          placeholder="Describe your suggestion, background context, or problem in detail..." 
+          required
+        ></textarea>
+      </div>
+
+      <div class="composer-form-footer">
+        <span class="composer-author-hint">Posting as <strong>{{ user.username }}</strong></span>
+        <div class="composer-actions">
+          <button type="button" id="cancel-composer-btn" class="btn btn-secondary btn-sm">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <span>Publish Post</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+      </div>
+    </form>
+  </section>
+  {% endif %}
+
+  <!-- Category Filter Strip -->
+  <nav class="community-category-nav" role="tablist" aria-label="Discussion Categories">
+    {% for cat in categories %}
+    <a 
+      href="{% url 'community' %}{% if cat != 'All' %}?category={{ cat|urlencode }}{% endif %}" 
+      class="community-cat-pill {% if selected_category == cat %}active{% endif %}"
+    >
+      <span class="cat-pill-icon">
+        {% if cat == 'Feature Idea' %}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        {% elif cat == 'Topic Request' %}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+        {% elif cat == 'Bug Report' %}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        {% elif cat == 'General' %}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        {% else %}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        {% endif %}
+      </span>
+      <span class="cat-pill-label">{{ cat }}</span>
+    </a>
+    {% endfor %}
+  </nav>
+
+  <!-- Discussions Stream List -->
+  <section class="community-posts-list" aria-label="Discussion Threads">
+    {% if posts %}
+      {% for post in posts %}
+      <article class="community-post-card" id="post-card-{{ post.id }}">
+        <div class="post-card-main">
+          <!-- Upvote Button Column -->
+          <div class="post-upvote-col">
+            <button 
+              type="button" 
+              class="post-upvote-btn {% if post.is_upvoted %}is-upvoted{% endif %} {% if not user.is_authenticated %}auth-locked-btn{% endif %}" 
+              data-post-id="{{ post.id }}" 
+              title="Upvote this discussion"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+              <span class="upvote-count" id="upvote-count-{{ post.id }}">{{ post.upvote_count }}</span>
+            </button>
+          </div>
+
+          <!-- Post Content Column -->
+          <div class="post-content-col">
+            <div class="post-meta-top">
+              <span class="post-cat-tag cat-{{ post.category|slugify }}">
+                {{ post.category }}
+              </span>
+              <span class="post-meta-sep">•</span>
+              <span class="post-author-name">@{{ post.user.username }}</span>
+              <span class="post-meta-sep">•</span>
+              <time class="post-timestamp" datetime="{{ post.created_at|date:'c' }}">
+                {{ post.created_at|timesince }} ago
+              </time>
+            </div>
+
+            <h2 class="post-title">{{ post.title }}</h2>
+            <div class="post-body">
+              <p>{{ post.body|linebreaksbr }}</p>
+            </div>
+
+            <!-- Post Footer Actions -->
+            <div class="post-card-footer">
+              <button type="button" class="post-comment-toggle-btn" data-target="comments-{{ post.id }}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span id="comment-count-pill-{{ post.id }}">{{ post.comment_count }} repl{{ post.comment_count|pluralize:"y,ies" }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comments Accordion Section -->
+        <div id="comments-{{ post.id }}" class="post-comments-panel hidden">
+          <div class="comments-list" id="comments-list-{{ post.id }}">
+            {% for comment in post.comments %}
+            <div class="comment-bubble">
+              <div class="comment-meta">
+                <span class="comment-author">@{{ comment.user.username }}</span>
+                <span class="comment-time">{{ comment.created_at|timesince }} ago</span>
+              </div>
+              <p class="comment-text">{{ comment.body }}</p>
+            </div>
+            {% empty %}
+            <div class="no-comments-hint" id="no-comments-hint-{{ post.id }}">No replies yet. Start the conversation!</div>
+            {% endfor %}
+          </div>
+
+          <!-- Add Reply Form -->
+          {% if user.is_authenticated %}
+          <form method="POST" action="{% url 'community_comment_create' post.id %}" class="comment-composer-form" data-post-id="{{ post.id }}">
+            {% csrf_token %}
+            <input 
+              type="text" 
+              name="body" 
+              class="form-input comment-input" 
+              placeholder="Write a constructive reply..." 
+              required 
+              maxlength="1000"
+              autocomplete="off"
+            />
+            <button type="submit" class="btn btn-primary btn-sm">Reply</button>
+          </form>
+          {% else %}
+          <div class="guest-reply-prompt">
+            <span>Sign in to reply to this discussion.</span>
+            <a href="{% url 'login' %}?next={% url 'community' %}" class="auth-link">Sign In</a>
+          </div>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    {% else %}
+      <div class="community-empty-card">
+        <div class="empty-icon-wrap">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        </div>
+        <h3 class="empty-title">No Discussions in "{{ selected_category }}"</h3>
+        <p class="empty-desc">Be the first to share feedback, propose a feature, or request a Wikipedia topic.</p>
+        {% if user.is_authenticated %}
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('community-composer-card')?.classList.remove('hidden'); document.getElementById('post-title')?.focus();">
+          Create Post Now
+        </button>
+        {% else %}
+        <a href="{% url 'login' %}?next={% url 'community' %}" class="btn btn-primary">Sign In to Post</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

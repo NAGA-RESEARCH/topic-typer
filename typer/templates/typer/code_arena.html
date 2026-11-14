@@ -1,0 +1,307 @@
+{% extends 'typer/base.html' %}
+{% load static %}
+
+{% block title %}Developer Code Arena — TopicTyper v5.0{% endblock %}
+{% block meta_description %}Dedicated IDE-style coding practice arena. Type real Python, C++, JavaScript, SQL, Linux/Bash, and HTML/CSS snippets with smart indentation, line numbers, and developer audio.{% endblock %}
+{% block brand_subtitle %}IDE Code Arena{% endblock %}
+{% block code_active %}active{% endblock %}
+
+{% block navbar_search %}{% endblock %}
+
+{% block content %}
+<main class="code-arena-shell" id="code-arena-shell">
+  <!-- Top Telemetry & Arena Controller -->
+  <header class="code-arena-header">
+    <div class="code-arena-intro">
+      <div class="code-arena-badge-row">
+        <span class="badge badge-accent">IDE Code Arena</span>
+        <span class="badge badge-subtle" id="arena-snippet-pill">Snippet 1 of 6</span>
+        <span class="badge badge-outline" id="arena-diff-pill">Beginner</span>
+      </div>
+      <h1 class="code-arena-title" id="arena-title">Loading code program...</h1>
+      <p class="code-arena-desc" id="arena-desc">Select a language and program below to begin your typing session.</p>
+    </div>
+
+    <!-- Live Telemetry HUD -->
+    <div class="code-hud" aria-label="Live Typing Metrics">
+      <div class="hud-pill">
+        <span class="hud-pill-label">Speed</span>
+        <span class="hud-pill-val color-sky" id="code-stat-wpm">0</span>
+      </div>
+
+      <div class="hud-pill">
+        <span class="hud-pill-label">Accuracy</span>
+        <span class="hud-pill-val color-emerald" id="code-stat-accuracy">100%</span>
+      </div>
+
+      <div class="hud-pill">
+        <span class="hud-pill-label">Time</span>
+        <span class="hud-pill-val" id="code-stat-time">00:00</span>
+      </div>
+
+      <div class="hud-pill">
+        <span class="hud-pill-label">Progress</span>
+        <span class="hud-pill-val" id="code-stat-progress">0%</span>
+      </div>
+
+      <div class="hud-pill">
+        <span class="hud-pill-label">Errors</span>
+        <span class="hud-pill-val color-coral" id="code-stat-errors">0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Interactive Language Selector Tabs -->
+  <nav class="code-lang-tabs" role="tablist" aria-label="Programming Language Selector">
+    {% for lang in languages %}
+    <button 
+      type="button" 
+      class="code-lang-tab {% if lang.id == initial_lang %}active{% endif %}" 
+      data-lang="{{ lang.id }}" 
+      role="tab" 
+      aria-selected="{% if lang.id == initial_lang %}true{% else %}false{% endif %}"
+    >
+      <span class="lang-tab-icon">
+        {% if lang.id == 'sql' %}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+        {% elif lang.id == 'bash' %}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+        {% elif lang.id == 'html_css' %}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+        {% else %}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+        {% endif %}
+      </span>
+      <span class="lang-tab-name">{{ lang.name }}</span>
+    </button>
+    {% endfor %}
+  </nav>
+
+  <!-- Filter & Program Selection Strip -->
+  <div class="code-selector-strip">
+    <!-- Difficulty Pills -->
+    <div class="diff-pills-group" role="radiogroup" aria-label="Difficulty filter">
+      <span class="filter-label">Difficulty:</span>
+      {% for diff in difficulties %}
+      <button 
+        type="button" 
+        class="diff-filter-pill {% if forloop.first %}active{% endif %}" 
+        data-difficulty="{{ diff }}"
+      >
+        {{ diff }}
+      </button>
+      {% endfor %}
+    </div>
+
+    <!-- Snippet Selection Chips Wrap (Clean flex-wrap layout, zero horizontal scrollbar) -->
+    <div class="snippet-chips-wrap" id="snippet-chips-bar" aria-label="Program selector">
+      <!-- Injected dynamically via JS based on active language and difficulty -->
+    </div>
+  </div>
+
+  <!-- Dedicated IDE Code Editor Card -->
+  <section class="ide-editor-card" aria-label="Code Typing Editor">
+    <!-- Live Rhythm & Speed Waveform Pulse Bar -->
+    <div class="rhythm-waveform-bar ide-waveform-bar" id="code-rhythm-waveform-bar" aria-label="Code typing rhythm and speed waveform">
+      <canvas id="code-rhythm-waveform-canvas" class="rhythm-waveform-canvas" height="14"></canvas>
+      <div class="waveform-combo-pill hidden" id="code-waveform-combo-pill" title="Current streak of flawless code keystrokes">
+        <span class="combo-flame">⚡</span>
+        <span class="combo-label" id="code-waveform-combo-label">0 Streak</span>
+      </div>
+    </div>
+
+    <!-- Editor Title Bar -->
+    <div class="ide-titlebar">
+      <div class="ide-window-controls" aria-hidden="true">
+        <span class="window-dot dot-red"></span>
+        <span class="window-dot dot-yellow"></span>
+        <span class="window-dot dot-green"></span>
+      </div>
+
+      <div class="ide-file-tab">
+        <span class="ide-file-icon" id="ide-active-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+        </span>
+        <span class="ide-file-name" id="ide-active-filename">program.py</span>
+        <span class="ide-file-lang-pill" id="ide-active-lang-badge">PYTHON</span>
+      </div>
+
+      <div class="ide-titlebar-actions">
+        <span class="smart-indent-badge" title="Smart Enter automatically indents to matching code column">
+          <span class="smart-icon">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </span>
+          <span>Smart Enter Indent</span>
+        </span>
+        <button type="button" id="code-restart-btn" class="ide-action-btn" title="Restart snippet [Esc]">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+          <span>Restart [Esc]</span>
+        </button>
+        <button type="button" id="code-next-btn" class="ide-action-btn btn-accent" title="Next snippet [Tab]">
+          <span>Next Snippet [Tab]</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Editor Workspace (Gutter + Code Viewport) -->
+    <div class="ide-workspace" id="ide-workspace" tabindex="-1">
+      <!-- Focus Prompt Overlay -->
+      <div id="code-focus-overlay" class="focus-overlay">
+        <div class="focus-pill">
+          <span class="focus-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><line x1="6" y1="8" x2="6" y2="8"></line><line x1="10" y1="8" x2="10" y2="8"></line><line x1="14" y1="8" x2="14" y2="8"></line><line x1="18" y1="8" x2="18" y2="8"></line><line x1="6" y1="12" x2="6" y2="12"></line><line x1="10" y1="12" x2="10" y2="12"></line><line x1="14" y1="12" x2="14" y2="12"></line><line x1="18" y1="12" x2="18" y2="12"></line><line x1="7" y1="16" x2="17" y2="16"></line></svg>
+          </span>
+          <span>Click to focus editor or press any key to code</span>
+        </div>
+      </div>
+
+      <!-- Hidden Keystroke Stream Input -->
+      <input 
+        type="text" 
+        id="code-hidden-input" 
+        class="hidden-input" 
+        autocomplete="off" 
+        autocorrect="off" 
+        autocapitalize="off" 
+        spellcheck="false" 
+        aria-label="Code typing input stream"
+      />
+
+      <!-- Line Numbers Gutter -->
+      <div class="ide-gutter" id="ide-gutter" aria-hidden="true">
+        <!-- Dynamically populated line numbers (1, 2, 3...) -->
+      </div>
+
+      <!-- Code Typing Stream & Caret -->
+      <div class="ide-code-container" id="ide-code-container" aria-live="polite">
+        <div id="code-words-container" class="code-words-container"></div>
+        <div id="code-caret" class="caret" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <!-- Live Interactive Keycap Visualizer Strip -->
+    <div class="keycap-visualizer-section keycap-ide-theme" id="code-keycap-visualizer-section">
+      <div class="keycap-header-strip">
+        <div class="keycap-status-pill">
+          <span class="keycap-led"></span>
+          <span class="keycap-title-text">IDE Tactile Keycaps</span>
+          <span class="keycap-next-hint" id="code-keycap-next-hint">Next: <kbd class="kbd-hint" id="code-keycap-next-char">Space</kbd></span>
+        </div>
+        <button type="button" class="keycap-toggle-btn" id="code-keycap-toggle-btn" title="Toggle IDE Keyboard Strip">
+          <svg class="keycap-toggle-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+            <path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M6 16h12"></path>
+          </svg>
+          <span id="code-keycap-toggle-text">Hide Keys</span>
+        </button>
+      </div>
+      <div class="keycap-strip-body" id="code-keycap-strip-body">
+        <div class="keycap-board" id="code-keycap-board" aria-label="IDE mechanical keycap strip visualizer">
+          <!-- Rendered dynamically by KeycapVisualizer -->
+        </div>
+      </div>
+    </div>
+
+    <!-- IDE Footer with Shortcuts & Real-World Description -->
+    <div class="ide-footer">
+      <div class="ide-context-hint" id="ide-snippet-description">
+        Developer code snippet. Focus on typing precision, bracket placement, and coding flow.
+      </div>
+      <div class="ide-footer-shortcuts">
+        <span class="hint-pill"><kbd class="kbd">Enter</kbd> Smart Indent</span>
+        <span class="hint-pill"><kbd class="kbd">Tab</kbd> Next</span>
+        <span class="hint-pill"><kbd class="kbd">Esc</kbd> Restart</span>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block modals %}
+<!-- Code Arena Completion Modal -->
+<div id="code-results-modal" class="results-modal hidden" role="dialog" aria-modal="true" aria-labelledby="code-modal-rank-text">
+  <div class="modal-backdrop" id="code-modal-backdrop"></div>
+  <div class="modal-card modal-visual-card">
+    <div class="modal-visual-header">
+      <div id="code-modal-rank-badge" class="modal-rank-badge rank-swift">
+        <span class="rank-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        </span>
+        <span class="rank-text" id="code-modal-rank-text">10x Code Artisan</span>
+      </div>
+      <div class="modal-visual-meta">
+        <span class="visual-meta-topic" id="code-modal-meta-title">program.py</span>
+        <span class="visual-meta-sep">•</span>
+        <span class="visual-meta-time" id="code-modal-meta-time">00:32</span>
+      </div>
+    </div>
+
+    <!-- Dual Animated Circular Gauges -->
+    <div class="modal-gauges-row">
+      <div class="gauge-card">
+        <div class="gauge-svg-wrapper">
+          <svg class="circular-gauge" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="gauge-bg" cx="60" cy="60" r="50"></circle>
+            <circle id="code-gauge-wpm-bar" class="gauge-bar bar-sky" cx="60" cy="60" r="50"></circle>
+          </svg>
+          <div class="gauge-center-content">
+            <span class="gauge-value" id="code-res-wpm">0</span>
+            <span class="gauge-label">WPM</span>
+          </div>
+        </div>
+        <div class="gauge-sublabel">Coding Velocity</div>
+      </div>
+
+      <div class="gauge-card">
+        <div class="gauge-svg-wrapper">
+          <svg class="circular-gauge" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="gauge-bg" cx="60" cy="60" r="50"></circle>
+            <circle id="code-gauge-acc-bar" class="gauge-bar bar-emerald" cx="60" cy="60" r="50"></circle>
+          </svg>
+          <div class="gauge-center-content">
+            <span class="gauge-value" id="code-res-acc">100%</span>
+            <span class="gauge-label">ACC</span>
+          </div>
+        </div>
+        <div class="gauge-sublabel">Syntax Accuracy</div>
+      </div>
+    </div>
+
+    <!-- Metrics Summary Strip -->
+    <div class="modal-summary-strip">
+      <div class="summary-stat-cell">
+        <span class="stat-cell-label">Raw Speed</span>
+        <span class="stat-cell-val" id="code-res-raw-wpm">0 WPM</span>
+      </div>
+      <div class="summary-stat-cell">
+        <span class="stat-cell-label">Syntax Errors</span>
+        <span class="stat-cell-val color-coral" id="code-res-errors">0</span>
+      </div>
+      <div class="summary-stat-cell">
+        <span class="stat-cell-label">Characters</span>
+        <span class="stat-cell-val" id="code-res-chars">0</span>
+      </div>
+    </div>
+
+    <!-- Modal Action Buttons -->
+    <div class="modal-actions-row">
+      <button type="button" id="code-modal-retry-btn" class="btn btn-secondary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+        <span>Retry Code [Esc]</span>
+      </button>
+      <button type="button" id="code-modal-next-btn" class="btn btn-primary">
+        <span>Next Program [Tab]</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  window.TOPIC_TYPER_CODE_DATA = {{ code_snippets_json|safe }};
+  window.TOPIC_TYPER_INITIAL_LANG = "{{ initial_lang }}";
+</script>
+{% endblock %}

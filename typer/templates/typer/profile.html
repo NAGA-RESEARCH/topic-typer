@@ -1,0 +1,333 @@
+{% extends 'typer/base.html' %}
+{% load static %}
+
+{% block title %}User Profile & Telemetry — TopicTyper{% endblock %}
+{% block meta_description %}Manage your TopicTyper preferences, track lifetime typing telemetry, and view unlockable achievement badges.{% endblock %}
+{% block brand_subtitle %}User Profile & Telemetry{% endblock %}
+
+{% block content %}
+<main class="profile-dashboard-shell">
+  <!-- Profile Hero Header -->
+  <header class="profile-hero-card">
+    <div class="profile-hero-top-row">
+      <span class="badge {{ skill_rank.class }}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M18 4H6v7a6 6 0 0 0 12 0V4z"></path></svg>
+        {{ skill_rank.title }} ({{ skill_rank.tier }})
+      </span>
+      <span class="badge badge-outline">Member since {{ user.date_joined|date:"M Y" }}</span>
+    </div>
+    <div class="profile-hero-main">
+      <div class="profile-hero-avatar-wrap">
+        <div class="profile-large-avatar" aria-hidden="true">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <div class="avatar-glow-ring"></div>
+      </div>
+      <div class="profile-hero-meta">
+        <h1 class="profile-username">{{ user.username }}</h1>
+        <p class="profile-user-subtitle">
+          Continuous learner practicing on TopicTyper. {{ total_sessions }} practice session{{ total_sessions|pluralize }} recorded.
+        </p>
+      </div>
+    </div>
+  </header>
+
+  {% if saved_success %}
+  <div class="profile-alert-banner alert-success" role="status">
+    <span class="alert-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </span>
+    <span>Your profile preferences and favorite programming languages have been updated successfully!</span>
+  </div>
+  {% endif %}
+
+  <!-- 1. Lifetime Telemetry Metrics Grid -->
+  <section class="telemetry-section" aria-label="Lifetime Typing Telemetry">
+    <div class="telemetry-header">
+      <h2 class="section-title">Lifetime Telemetry</h2>
+      <span class="section-subtitle">Real-time aggregated performance across all typing sessions</span>
+    </div>
+    <div class="telemetry-cards-grid">
+      <div class="telemetry-card">
+        <div class="telemetry-card-top">
+          <span class="card-metric-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M18 4H6v7a6 6 0 0 0 12 0V4z"></path></svg>
+          </span>
+          <span class="card-metric-label">Personal Best</span>
+        </div>
+        <div class="telemetry-card-value color-sky">
+          <span class="metric-num">{{ best_wpm }}</span>
+          <span class="metric-unit">WPM</span>
+        </div>
+        <div class="telemetry-card-sub">Peak typing velocity</div>
+      </div>
+
+      <div class="telemetry-card">
+        <div class="telemetry-card-top">
+          <span class="card-metric-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+          </span>
+          <span class="card-metric-label">Average Accuracy</span>
+        </div>
+        <div class="telemetry-card-value color-emerald">
+          <span class="metric-num">{{ avg_accuracy }}</span>
+          <span class="metric-unit">%</span>
+        </div>
+        <div class="telemetry-card-sub">Overall keystroke precision</div>
+      </div>
+
+      <div class="telemetry-card">
+        <div class="telemetry-card-top">
+          <span class="card-metric-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+          </span>
+          <span class="card-metric-label">Practice Streak</span>
+        </div>
+        <div class="telemetry-card-value color-amber">
+          <span class="metric-num">{{ daily_streak }}</span>
+          <span class="metric-unit">Days</span>
+        </div>
+        <div class="telemetry-card-sub">Consecutive active days</div>
+      </div>
+
+      <div class="telemetry-card">
+        <div class="telemetry-card-top">
+          <span class="card-metric-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          </span>
+          <span class="card-metric-label">Total Sessions</span>
+        </div>
+        <div class="telemetry-card-value">
+          <span class="metric-num">{{ total_sessions }}</span>
+          <span class="metric-unit">Runs</span>
+        </div>
+        <div class="telemetry-card-sub">Completed practice runs</div>
+      </div>
+
+      <div class="telemetry-card">
+        <div class="telemetry-card-top">
+          <span class="card-metric-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </span>
+          <span class="card-metric-label">Time Dedicated</span>
+        </div>
+        <div class="telemetry-card-value">
+          <span class="metric-num">{{ total_practice_minutes }}</span>
+          <span class="metric-unit">Min</span>
+        </div>
+        <div class="telemetry-card-sub">Time actively typing</div>
+      </div>
+
+      <div class="telemetry-card">
+        <div class="telemetry-card-top">
+          <span class="card-metric-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="6" y1="8" x2="6" y2="8"></line><line x1="10" y1="8" x2="10" y2="8"></line><line x1="14" y1="8" x2="14" y2="8"></line><line x1="18" y1="8" x2="18" y2="8"></line><line x1="7" y1="16" x2="17" y2="16"></line></svg>
+          </span>
+          <span class="card-metric-label">Characters Typed</span>
+        </div>
+        <div class="telemetry-card-value">
+          <span class="metric-num">{{ total_chars }}</span>
+          <span class="metric-unit">Chars</span>
+        </div>
+        <div class="telemetry-card-sub">Accurate keystrokes delivered</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Dual Panel: Preferences Configuration + Language Breakdown -->
+  <div class="profile-two-col-grid">
+    <!-- Left: Preferences & Settings Form -->
+    <section class="profile-card settings-card" aria-label="Personal Preferences">
+      <div class="card-heading-group">
+        <span class="card-tag">Configuration</span>
+        <h2 class="card-title">Typing Preferences</h2>
+      </div>
+
+      <form method="POST" action="{% url 'profile' %}" class="profile-form">
+        {% csrf_token %}
+        <div class="form-group">
+          <label class="form-label">
+            <span class="label-text">Target Skill Level</span>
+            <span class="label-hint">Determines recommended code snippet complexity</span>
+          </label>
+          <div class="skill-level-radios">
+            <label class="skill-radio-option {% if profile.skill_level == 'Beginner' %}selected{% endif %}">
+              <input type="radio" name="skill_level" value="Beginner" {% if profile.skill_level == 'Beginner' %}checked{% endif %}>
+              <span class="radio-label-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22v-8"></path><path d="M17 7c0-2.8-2.2-5-5-5S7 4.2 7 7c0 7 5 9 5 9s5-2 5-9z"></path></svg>
+              </span>
+              <span class="radio-label-text">Beginner</span>
+            </label>
+            <label class="skill-radio-option {% if profile.skill_level == 'Intermediate' %}selected{% endif %}">
+              <input type="radio" name="skill_level" value="Intermediate" {% if profile.skill_level == 'Intermediate' %}checked{% endif %}>
+              <span class="radio-label-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              </span>
+              <span class="radio-label-text">Intermediate</span>
+            </label>
+            <label class="skill-radio-option {% if profile.skill_level == 'Pro' %}selected{% endif %}">
+              <input type="radio" name="skill_level" value="Pro" {% if profile.skill_level == 'Pro' %}checked{% endif %}>
+              <span class="radio-label-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15 8 21 9 17 14 18 20 12 17 6 20 7 14 3 9 9 8 12 2"></polygon></svg>
+              </span>
+              <span class="radio-label-text">Pro</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">
+            <span class="label-text">Preferred Programming Languages</span>
+            <span class="label-hint">Prioritizes snippets in Code Arena &amp; recommendations</span>
+          </label>
+          <div class="languages-pills-grid">
+            {% for lang in available_languages %}
+            <label class="lang-checkbox-label {% if lang.id in user_fav_langs %}selected{% endif %}">
+              <input type="checkbox" name="languages" value="{{ lang.id }}" {% if lang.id in user_fav_langs %}checked{% endif %}>
+              <span class="lang-pill-icon">
+                {% if lang.id == 'sql' %}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                {% elif lang.id == 'bash' %}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                {% elif lang.id == 'html_css' %}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                {% else %}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                {% endif %}
+              </span>
+              <span class="lang-pill-name">{{ lang.name }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="save-profile-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            <span>Save Preferences</span>
+          </button>
+          <a href="{% url 'code_arena' %}" class="btn btn-outline" title="Open Code Arena with preferred languages">
+            <span>Practice Code</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </a>
+        </div>
+      </form>
+    </section>
+
+    <!-- Right: Language & Mode Breakdown -->
+    <section class="profile-card breakdown-card" aria-label="Language and Mode Breakdown">
+      <div class="card-heading-group">
+        <span class="card-tag">Telemetry Analytics</span>
+        <h2 class="card-title">Language &amp; Mode Breakdown</h2>
+      </div>
+
+      <div class="breakdown-list">
+        {% for item in breakdown_data %}
+        <div class="breakdown-item">
+          <div class="breakdown-top">
+            <div class="breakdown-identity">
+              <span class="breakdown-icon">
+                {% if item.icon == 'book' %}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                {% elif item.icon == 'timer' %}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                {% elif item.icon == 'target' %}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                {% else %}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                {% endif %}
+              </span>
+              <span class="breakdown-name">{{ item.name }}</span>
+              <span class="breakdown-runs-badge">{{ item.sessions_count }} run{{ item.sessions_count|pluralize }}</span>
+            </div>
+            <div class="breakdown-stats-pill">
+              <span class="stat-avg-wpm">{{ item.avg_wpm }} WPM</span>
+              <span class="stat-sep">•</span>
+              <span class="stat-accuracy">{{ item.accuracy }}% Acc</span>
+            </div>
+          </div>
+
+          <!-- Dual Visual Progress Bars -->
+          <div class="breakdown-progress-group">
+            <div class="progress-bar-row">
+              <span class="bar-label">Speed</span>
+              <div class="bar-track">
+                <div class="bar-fill fill-sky" style="width: {{ item.wpm_percent }}%;"></div>
+              </div>
+              <span class="bar-val-text">{{ item.avg_wpm }}</span>
+            </div>
+
+            <div class="progress-bar-row">
+              <span class="bar-label">Accuracy</span>
+              <div class="bar-track">
+                <div class="bar-fill fill-emerald" style="width: {{ item.acc_percent }}%;"></div>
+              </div>
+              <span class="bar-val-text">{{ item.accuracy }}%</span>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <!-- 3. Unlockable Achievement Badges -->
+  <section class="achievements-section" aria-label="Unlockable Badges and Milestones">
+    <div class="achievements-header-row">
+      <div class="achievements-title-group">
+        <span class="card-tag">Milestones</span>
+        <h2 class="section-title">Unlockable Achievement Badges</h2>
+      </div>
+      <div class="achievements-progress-pill">
+        <span class="achieve-counter">{{ unlocked_count }} of {{ total_achievements }} Unlocked</span>
+      </div>
+    </div>
+
+    <div class="achievements-grid">
+      {% for badge in achievements %}
+      <div class="achievement-card {% if badge.unlocked %}unlocked{% else %}locked{% endif %}" title="{{ badge.title }}: {{ badge.description }}">
+        <div class="achievement-top">
+          <div class="achievement-icon-wrap">
+            <span class="achievement-icon">
+              {% if badge.icon == 'keyboard' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="6" y1="8" x2="6" y2="8"></line><line x1="10" y1="8" x2="10" y2="8"></line><line x1="14" y1="8" x2="14" y2="8"></line><line x1="18" y1="8" x2="18" y2="8"></line><line x1="7" y1="16" x2="17" y2="16"></line></svg>
+              {% elif badge.icon == 'target' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+              {% elif badge.icon == 'flame' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+              {% elif badge.icon == 'crown' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15 8 21 9 17 14 18 20 12 17 6 20 7 14 3 9 9 8 12 2"></polygon></svg>
+              {% elif badge.icon == 'gem' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 3 18 3 22 9 12 22 2 9"></polygon></svg>
+              {% elif badge.icon == 'code' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+              {% elif badge.icon == 'pulse' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              {% else %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              {% endif %}
+            </span>
+          </div>
+          <span class="achievement-status-badge">
+            {% if badge.unlocked %}
+            <span class="status-dot dot-unlocked"></span> Unlocked
+            {% else %}
+            <span class="status-dot dot-locked"></span> Locked
+            {% endif %}
+          </span>
+        </div>
+        <div class="achievement-body">
+          <h3 class="achievement-title">{{ badge.title }}</h3>
+          <p class="achievement-desc">{{ badge.description }}</p>
+        </div>
+        <div class="achievement-footer">
+          <span class="achievement-metric">{{ badge.metric }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

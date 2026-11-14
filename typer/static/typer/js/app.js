@@ -8,6 +8,176 @@
  * 5. UIController: Wires together UI state, events, animations, randomizer, and modals.
  */
 
+
+// ============================================================================
+// 9. COMMUNITY & FEEDBACK HUB CONTROLLER (/community/)
+// ============================================================================
+class CommunityController {
+  constructor() {
+    this.hubEl = document.getElementById('community-hub');
+    this.toggleComposerBtn = document.getElementById('toggle-post-composer-btn');
+    this.guestComposeBtn = document.getElementById('guest-compose-btn');
+    this.composerCard = document.getElementById('community-composer-card');
+    this.closeComposerBtn = document.getElementById('close-composer-btn');
+    this.cancelComposerBtn = document.getElementById('cancel-composer-btn');
+    this.postTitleInput = document.getElementById('post-title');
+
+    this.init();
+  }
+
+  showGuestLockModal(featureName) {
+    const modal = document.getElementById('guest-lock-modal');
+    if (!modal) return;
+    const descEl = document.getElementById('lock-modal-desc');
+    if (descEl && featureName) {
+      descEl.textContent = `${featureName} requires an account. Sign in or create a free account to join discussions and share your suggestions.`;
+    }
+    modal.classList.remove('hidden');
+  }
+
+  init() {
+    // 1. Composer Card Toggle
+    if (this.toggleComposerBtn && this.composerCard) {
+      this.toggleComposerBtn.addEventListener('click', () => {
+        SoundService.playUITick();
+        const isHidden = this.composerCard.classList.contains('hidden');
+        this.composerCard.classList.toggle('hidden', !isHidden);
+        if (isHidden && this.postTitleInput) {
+          this.postTitleInput.focus();
+        }
+      });
+    }
+
+    if (this.guestComposeBtn) {
+      this.guestComposeBtn.addEventListener('click', () => {
+        this.showGuestLockModal('Creating a Discussion');
+      });
+    }
+
+    if (this.closeComposerBtn && this.composerCard) {
+      this.closeComposerBtn.addEventListener('click', () => {
+        this.composerCard.classList.add('hidden');
+      });
+    }
+
+    if (this.cancelComposerBtn && this.composerCard) {
+      this.cancelComposerBtn.addEventListener('click', () => {
+        this.composerCard.classList.add('hidden');
+      });
+    }
+
+    // 2. Upvote Buttons (Async POST)
+    document.querySelectorAll('.post-upvote-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        SoundService.playUITick();
+        const isAuth = document.documentElement.getAttribute('data-authenticated') === 'true';
+        if (!isAuth || btn.classList.contains('auth-locked-btn')) {
+          this.showGuestLockModal('Upvoting Ideas');
+          return;
+        }
+
+        const postId = btn.dataset.postId;
+        if (!postId) return;
+
+        try {
+          const res = await fetch(`/community/post/${postId}/upvote/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': getCsrfToken(),
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            btn.classList.toggle('is-upvoted', data.upvoted);
+            const countEl = document.getElementById(`upvote-count-${postId}`);
+            if (countEl) countEl.textContent = data.upvote_count;
+          }
+        } catch (err) {
+          console.warn('Upvote request failed:', err);
+        }
+      });
+    });
+
+    // 3. Comments Accordion Toggle
+    document.querySelectorAll('.post-comment-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        SoundService.playUITick();
+        const targetId = btn.dataset.target;
+        if (targetId) {
+          const panel = document.getElementById(targetId);
+          if (panel) {
+            panel.classList.toggle('hidden');
+          }
+        }
+      });
+    });
+
+    // 4. Async Comment Form Submission
+    document.querySelectorAll('.comment-composer-form').forEach(form => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = form.querySelector('.comment-input');
+        const bodyText = input ? input.value.trim() : '';
+        if (!bodyText) return;
+
+        const postId = form.dataset.postId;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+          const formData = new FormData(form);
+          const res = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': getCsrfToken(),
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.comment) {
+              const list = document.getElementById(`comments-list-${postId}`);
+              const emptyHint = document.getElementById(`no-comments-hint-${postId}`);
+              if (emptyHint) emptyHint.style.display = 'none';
+
+              if (list) {
+                const bubble = document.createElement('div');
+                bubble.className = 'comment-bubble';
+                bubble.innerHTML = `
+                  <div class="comment-meta">
+                    <span class="comment-author">@${data.comment.username}</span>
+                    <span class="comment-time">just now</span>
+                  </div>
+                  <p class="comment-text">${data.comment.body}</p>
+                `;
+                list.appendChild(bubble);
+              }
+
+              if (input) input.value = '';
+
+              const countPill = document.getElementById(`comment-count-pill-${postId}`);
+              if (countPill && data.comment_count !== undefined) {
+                countPill.textContent = `${data.comment_count} repl${data.comment_count === 1 ? 'y' : 'ies'}`;
+              }
+            }
+          } else {
+            form.submit();
+          }
+        } catch (err) {
+          form.submit();
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+    });
+  }
+}
+
 // ============================================================================
 // 1. TEXT SANITIZER & CHUNKER MODULE
 // ============================================================================
@@ -170,8 +340,45 @@ function getCsrfToken() {
 // ============================================================================
 // 1.5 THEME SERVICE & THEME-AWARE AMBIENT ENGINE
 // ============================================================================
+
+// ============================================================================
+// 1.4 VECTOR SVG ICON REGISTRY (100% Vector SVG Icons — Zero Emojis)
+// ============================================================================
+function getVectorIcon(iconKey) {
+  const icons = {
+    space: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m4.93 4.93 4.24 4.24M14.83 14.83l4.24 4.24M14.83 9.17l4.24-4.24M4.93 19.07l4.24-4.24"></path></svg>`,
+    code: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`,
+    terminal: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>`,
+    shield: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`,
+    brain: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04z"></path></svg>`,
+    history: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>`,
+    atom: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"></circle><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(30 12 12)"></ellipse><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(90 12 12)"></ellipse><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(150 12 12)"></ellipse></svg>`,
+    dna: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 15 2-2 4 4-2 2zM18 7l2-2 4 4-2 2zM9 18l3-3M12 15l3-3M15 12l3-3M6 21l3-3M14 9l3-3"></path></svg>`,
+    compass: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>`,
+    gear: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
+    globe: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
+    dice: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 8h.01M8 8h.01M8 16h.01M16 16h.01M12 12h.01"></path></svg>`,
+    number: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>`,
+    sparkle: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`,
+    bolt: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`,
+    target: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>`,
+    trophy: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1h10c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-2c-.55 0-1-.45-1-1v-2.34"></path><path d="M6 4h12v7a6 6 0 0 1-12 0V4z"></path></svg>`,
+    clock: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>`,
+    book: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>`,
+    python: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>`,
+    cpp: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline><line x1="12" y1="2" x2="12" y2="22"></line></svg>`,
+    javascript: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`,
+    sql: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>`,
+    bash: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>`,
+    html_css: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
+    volume_on: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`,
+    volume_off: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>`
+  };
+  return icons[iconKey] || icons.code;
+}
+
 const ThemeService = {
-  THEMES: ['midnight', 'coding', 'hacking', 'funny'],
+  THEMES: ['midnight', 'coding', 'hacking', 'funny', 'zen_matcha', 'warm_amber'],
   currentTheme: 'midnight',
 
   init() {
@@ -203,7 +410,9 @@ const ThemeService = {
         midnight: 'Midnight',
         coding: 'Coding IDE',
         hacking: 'Hacking',
-        funny: 'Arcade'
+        funny: 'Arcade',
+        zen_matcha: 'Zen Matcha',
+        warm_amber: 'Warm Amber'
       };
       activeLabelEl.textContent = names[this.currentTheme] || 'Theme';
     }
@@ -339,8 +548,8 @@ const AmbientEngine = {
         });
       }
     } else if (this.theme === 'funny') {
-      // Arcade confetti
-      const shapes = ['★', '◆', '●', '▲', '✦'];
+      // 100% Vector Arcade geometric confetti (circles, diamonds, triangles, stars)
+      const shapes = ['circle', 'diamond', 'triangle', 'star'];
       const colors = ['#FF6B6B', '#FFD93D', '#4CC9F0', '#9D4EDD', '#A6E3A1'];
       const count = Math.min(32, Math.floor(this.width / 45));
       for (let i = 0; i < count; i++) {
@@ -353,8 +562,36 @@ const AmbientEngine = {
           vy: -0.4 - Math.random() * 0.6,
           rot: Math.random() * Math.PI * 2,
           vrot: (Math.random() - 0.5) * 0.03,
-          size: 14 + Math.random() * 10,
-          alpha: 0.20 + Math.random() * 0.25
+          size: 6 + Math.random() * 6,
+          alpha: 0.25 + Math.random() * 0.35
+        });
+      }
+    } else if (this.theme === 'zen_matcha') {
+      // Calm Mint Fireflies softly floating and breathing
+      const count = Math.min(28, Math.floor(this.width / 45));
+      for (let i = 0; i < count; i++) {
+        this.particles.push({
+          x: Math.random() * this.width,
+          y: Math.random() * this.height,
+          vx: (Math.random() - 0.5) * 0.35,
+          vy: -0.15 - Math.random() * 0.3,
+          radius: 1.8 + Math.random() * 2.5,
+          baseAlpha: 0.25 + Math.random() * 0.35,
+          alphaPhase: Math.random() * Math.PI * 2,
+          alphaSpeed: 0.02 + Math.random() * 0.02
+        });
+      }
+    } else if (this.theme === 'warm_amber') {
+      // Golden Amber rising embers
+      const count = Math.min(30, Math.floor(this.width / 42));
+      for (let i = 0; i < count; i++) {
+        this.particles.push({
+          x: Math.random() * this.width,
+          y: Math.random() * this.height,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: -0.3 - Math.random() * 0.5,
+          radius: 1.5 + Math.random() * 2.2,
+          alpha: 0.25 + Math.random() * 0.45
         });
       }
     } else {
@@ -403,6 +640,10 @@ const AmbientEngine = {
       this.drawSyntaxTokens();
     } else if (this.theme === 'funny') {
       this.drawConfetti();
+    } else if (this.theme === 'zen_matcha') {
+      this.drawFireflies();
+    } else if (this.theme === 'warm_amber') {
+      this.drawEmbers();
     } else {
       this.drawConstellation();
     }
@@ -463,9 +704,70 @@ const AmbientEngine = {
       this.ctx.rotate(p.rot);
       this.ctx.fillStyle = p.color;
       this.ctx.globalAlpha = p.alpha;
-      this.ctx.font = `${p.size}px sans-serif`;
-      this.ctx.fillText(p.shape, -p.size / 2, p.size / 2);
+
+      const s = p.size;
+      this.ctx.beginPath();
+      if (p.shape === 'circle') {
+        this.ctx.arc(0, 0, s, 0, Math.PI * 2);
+      } else if (p.shape === 'diamond') {
+        this.ctx.moveTo(0, -s);
+        this.ctx.lineTo(s, 0);
+        this.ctx.lineTo(0, s);
+        this.ctx.lineTo(-s, 0);
+        this.ctx.closePath();
+      } else if (p.shape === 'triangle') {
+        this.ctx.moveTo(0, -s);
+        this.ctx.lineTo(s, s);
+        this.ctx.lineTo(-s, s);
+        this.ctx.closePath();
+      } else {
+        // 4-point geometric star
+        this.ctx.moveTo(0, -s);
+        this.ctx.lineTo(s * 0.3, -s * 0.3);
+        this.ctx.lineTo(s, 0);
+        this.ctx.lineTo(s * 0.3, s * 0.3);
+        this.ctx.lineTo(0, s);
+        this.ctx.lineTo(-s * 0.3, s * 0.3);
+        this.ctx.lineTo(-s, 0);
+        this.ctx.lineTo(-s * 0.3, -s * 0.3);
+        this.ctx.closePath();
+      }
+      this.ctx.fill();
       this.ctx.restore();
+    }
+  },
+
+  drawFireflies() {
+    for (const p of this.particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.alphaPhase += p.alphaSpeed;
+
+      if (p.y < -20) p.y = this.height + 10;
+      if (p.x < -20) p.x = this.width + 10;
+      if (p.x > this.width + 20) p.x = -10;
+
+      const alpha = p.baseAlpha * (0.6 + 0.4 * Math.sin(p.alphaPhase));
+      this.ctx.fillStyle = `rgba(110, 231, 183, ${alpha})`;
+      this.ctx.beginPath();
+      this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+  },
+
+  drawEmbers() {
+    for (const p of this.particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.y < -20) p.y = this.height + 10;
+      if (p.x < -20) p.x = this.width + 10;
+      if (p.x > this.width + 20) p.x = -10;
+
+      this.ctx.fillStyle = `rgba(251, 191, 36, ${p.alpha})`;
+      this.ctx.beginPath();
+      this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      this.ctx.fill();
     }
   },
 
@@ -507,72 +809,88 @@ const AmbientEngine = {
 // ============================================================================
 const CURATED_TOPICS_POOL = [
   // 1. Space & Cosmology
-  { title: 'James Webb Space Telescope', displayTitle: 'James Webb', category: 'Cosmology', icon: '🌌' },
-  { title: 'Black Hole', displayTitle: 'Black Holes', category: 'Cosmology', icon: '🕳️' },
-  { title: 'General Relativity', displayTitle: 'Relativity', category: 'Cosmology', icon: '🪐' },
-  { title: 'Voyager 1', displayTitle: 'Voyager 1', category: 'Spaceflight', icon: '🛰️' },
-  { title: 'Dark Matter', displayTitle: 'Dark Matter', category: 'Cosmology', icon: '✨' },
+  { title: 'James Webb Space Telescope', displayTitle: 'James Webb', category: 'Cosmology', icon: 'space' },
+  { title: 'Black Hole', displayTitle: 'Black Holes', category: 'Cosmology', icon: 'space' },
+  { title: 'General Relativity', displayTitle: 'Relativity', category: 'Cosmology', icon: 'space' },
+  { title: 'Voyager 1', displayTitle: 'Voyager 1', category: 'Spaceflight', icon: 'space' },
+  { title: 'Dark Matter', displayTitle: 'Dark Matter', category: 'Cosmology', icon: 'sparkle' },
 
   // 2. Computer Science & AI
-  { title: 'Artificial Intelligence', displayTitle: 'AI & Neural Nets', category: 'Computing', icon: '🤖' },
-  { title: 'Turing Machine', displayTitle: 'Turing Machine', category: 'Computer Science', icon: '💻' },
-  { title: 'Deep Learning', displayTitle: 'Deep Learning', category: 'Machine Learning', icon: '🔮' },
-  { title: 'Algorithm', displayTitle: 'Algorithms', category: 'Computer Science', icon: '🔢' },
-  { title: 'Computer Architecture', displayTitle: 'Chip Architecture', category: 'Computing', icon: '💾' },
+  { title: 'Artificial Intelligence', displayTitle: 'AI & Neural Nets', category: 'Computing', icon: 'code' },
+  { title: 'Turing Machine', displayTitle: 'Turing Machine', category: 'Computer Science', icon: 'terminal' },
+  { title: 'Deep Learning', displayTitle: 'Deep Learning', category: 'Machine Learning', icon: 'code' },
+  { title: 'Algorithm', displayTitle: 'Algorithms', category: 'Computer Science', icon: 'number' },
+  { title: 'Computer Architecture', displayTitle: 'Chip Architecture', category: 'Computing', icon: 'terminal' },
 
   // 3. Cybersecurity & Cryptography
-  { title: 'Public-Key Cryptography', displayTitle: 'Cryptography', category: 'Security', icon: '🔐' },
-  { title: 'Zero-Day Vulnerability', displayTitle: 'Zero-Day Exploits', category: 'Cybersecurity', icon: '🛡️' },
-  { title: 'RSA Cryptosystem', displayTitle: 'RSA Cipher', category: 'Cryptography', icon: '🔑' },
-  { title: 'Quantum Cryptography', displayTitle: 'Quantum Crypto', category: 'Security', icon: '🔒' },
+  { title: 'Public-Key Cryptography', displayTitle: 'Cryptography', category: 'Security', icon: 'shield' },
+  { title: 'Zero-Day Vulnerability', displayTitle: 'Zero-Day Exploits', category: 'Cybersecurity', icon: 'shield' },
+  { title: 'RSA Cryptosystem', displayTitle: 'RSA Cipher', category: 'Cryptography', icon: 'shield' },
+  { title: 'Quantum Cryptography', displayTitle: 'Quantum Crypto', category: 'Security', icon: 'shield' },
 
   // 4. Neuroscience & Psychology
-  { title: 'Neuroplasticity', displayTitle: 'Neuroplasticity', category: 'Neuroscience', icon: '🧠' },
-  { title: 'Cognitive Science', displayTitle: 'Cognitive Science', category: 'Mind', icon: '💡' },
-  { title: 'Dopamine', displayTitle: 'Dopamine & Drive', category: 'Neuroscience', icon: '⚡' },
-  { title: 'Consciousness', displayTitle: 'Consciousness', category: 'Psychology', icon: '👁️' },
+  { title: 'Neuroplasticity', displayTitle: 'Neuroplasticity', category: 'Neuroscience', icon: 'brain' },
+  { title: 'Cognitive Science', displayTitle: 'Cognitive Science', category: 'Mind', icon: 'brain' },
+  { title: 'Dopamine', displayTitle: 'Dopamine & Drive', category: 'Neuroscience', icon: 'bolt' },
+  { title: 'Consciousness', displayTitle: 'Consciousness', category: 'Psychology', icon: 'brain' },
 
   // 5. Ancient History
-  { title: 'Ancient Rome', displayTitle: 'Ancient Rome', category: 'History', icon: '🏛️' },
-  { title: 'Library of Alexandria', displayTitle: 'Alexandria Library', category: 'History', icon: '📜' },
-  { title: 'Indus Valley Civilisation', displayTitle: 'Indus Valley', category: 'Archaeology', icon: '🏺' },
-  { title: 'Pyramids of Giza', displayTitle: 'Great Pyramids', category: 'History', icon: '🔺' },
-  { title: 'Renaissance', displayTitle: 'Renaissance', category: 'Art & History', icon: '🎨' },
+  { title: 'Ancient Rome', displayTitle: 'Ancient Rome', category: 'History', icon: 'history' },
+  { title: 'Library of Alexandria', displayTitle: 'Alexandria Library', category: 'History', icon: 'history' },
+  { title: 'Indus Valley Civilisation', displayTitle: 'Indus Valley', category: 'Archaeology', icon: 'history' },
+  { title: 'Pyramids of Giza', displayTitle: 'Great Pyramids', category: 'History', icon: 'history' },
+  { title: 'Renaissance', displayTitle: 'Renaissance', category: 'Art & History', icon: 'history' },
 
   // 6. Quantum Physics
-  { title: 'Quantum Mechanics', displayTitle: 'Quantum Physics', category: 'Physics', icon: '⚛️' },
-  { title: 'Quantum Entanglement', displayTitle: 'Entanglement', category: 'Quantum', icon: '🪢' },
-  { title: 'Schrodinger Equation', displayTitle: 'Wave Mechanics', category: 'Physics', icon: '〰️' },
-  { title: 'Higgs Boson', displayTitle: 'Higgs Boson', category: 'Particle Physics', icon: '💥' },
+  { title: 'Quantum Mechanics', displayTitle: 'Quantum Physics', category: 'Physics', icon: 'atom' },
+  { title: 'Quantum Entanglement', displayTitle: 'Entanglement', category: 'Quantum', icon: 'atom' },
+  { title: 'Schrodinger Equation', displayTitle: 'Wave Mechanics', category: 'Physics', icon: 'atom' },
+  { title: 'Higgs Boson', displayTitle: 'Higgs Boson', category: 'Particle Physics', icon: 'atom' },
 
   // 7. Biology & Evolution
-  { title: 'CRISPR Gene Editing', displayTitle: 'CRISPR Genetics', category: 'Genetics', icon: '🧬' },
-  { title: 'Cambrian Explosion', displayTitle: 'Cambrian Era', category: 'Evolution', icon: '🦖' },
-  { title: 'Biodiversity', displayTitle: 'Biodiversity', category: 'Nature', icon: '🌿' },
-  { title: 'Origin of Life', displayTitle: 'Abiogenesis', category: 'Biology', icon: '🌱' },
+  { title: 'CRISPR Gene Editing', displayTitle: 'CRISPR Genetics', category: 'Genetics', icon: 'dna' },
+  { title: 'Cambrian Explosion', displayTitle: 'Cambrian Era', category: 'Evolution', icon: 'dna' },
+  { title: 'Biodiversity', displayTitle: 'Biodiversity', category: 'Nature', icon: 'dna' },
+  { title: 'Origin of Life', displayTitle: 'Abiogenesis', category: 'Biology', icon: 'dna' },
 
   // 8. Philosophy
-  { title: 'Stoicism', displayTitle: 'Stoicism', category: 'Philosophy', icon: '🏛️' },
-  { title: 'Existentialism', displayTitle: 'Existentialism', category: 'Philosophy', icon: '🧭' },
-  { title: 'Epistemology', displayTitle: 'Epistemology', category: 'Philosophy', icon: '📖' },
-  { title: 'Philosophy of Mind', displayTitle: 'Mind & Dualism', category: 'Philosophy', icon: '🎭' },
+  { title: 'Stoicism', displayTitle: 'Stoicism', category: 'Philosophy', icon: 'history' },
+  { title: 'Existentialism', displayTitle: 'Existentialism', category: 'Philosophy', icon: 'compass' },
+  { title: 'Epistemology', displayTitle: 'Epistemology', category: 'Philosophy', icon: 'book' },
+  { title: 'Philosophy of Mind', displayTitle: 'Mind & Dualism', category: 'Philosophy', icon: 'brain' },
 
   // 9. Engineering
-  { title: 'Large Hadron Collider', displayTitle: 'Hadron Collider', category: 'Engineering', icon: '⚙️' },
-  { title: 'Semiconductor Device Fabrication', displayTitle: 'Silicon Chips', category: 'Hardware', icon: '🔬' },
-  { title: 'Nuclear Fusion', displayTitle: 'Fusion Energy', category: 'Energy', icon: '☀️' },
-  { title: 'Space Shuttle', displayTitle: 'Orbital Flight', category: 'Aerospace', icon: '🚀' },
+  { title: 'Large Hadron Collider', displayTitle: 'Hadron Collider', category: 'Engineering', icon: 'gear' },
+  { title: 'Semiconductor Device Fabrication', displayTitle: 'Silicon Chips', category: 'Hardware', icon: 'gear' },
+  { title: 'Nuclear Fusion', displayTitle: 'Fusion Energy', category: 'Energy', icon: 'gear' },
+  { title: 'Space Shuttle', displayTitle: 'Orbital Flight', category: 'Aerospace', icon: 'space' },
 
   // 10. Earth & Oceans
-  { title: 'Mariana Trench', displayTitle: 'Mariana Trench', category: 'Deep Sea', icon: '🌊' },
-  { title: 'Plate Tectonics', displayTitle: 'Plate Tectonics', category: 'Earth Science', icon: '🌋' },
-  { title: 'Atmosphere of Earth', displayTitle: 'Atmosphere', category: 'Climate', icon: '🌪️' },
-  { title: 'Bioluminescence', displayTitle: 'Bioluminescence', category: 'Oceans', icon: '✨' }
+  { title: 'Mariana Trench', displayTitle: 'Mariana Trench', category: 'Deep Sea', icon: 'globe' },
+  { title: 'Plate Tectonics', displayTitle: 'Plate Tectonics', category: 'Earth Science', icon: 'globe' },
+  { title: 'Atmosphere of Earth', displayTitle: 'Atmosphere', category: 'Climate', icon: 'globe' },
+  { title: 'Bioluminescence', displayTitle: 'Bioluminescence', category: 'Oceans', icon: 'sparkle' }
 ];
 
 const WikipediaService = {
   // Curated diverse categories & topics for shuffling and fallback
   curatedTopics: CURATED_TOPICS_POOL,
+
+  async fetchCatalog() {
+    try {
+      const res = await fetch('/api/topics/catalog/');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.topics && Array.isArray(data.topics) && data.topics.length > 0) {
+          this.curatedTopics = data.topics;
+          return data.topics;
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch backend topic catalog, using local fallbacks:', err);
+    }
+    return this.curatedTopics;
+  },
 
   // Built-in offline fallback topics in case network is disconnected
   fallbacks: {
@@ -1441,7 +1759,7 @@ const AnalyticsService = {
     if (!hasErrors) {
       containerEl.innerHTML = `
         <span class="weak-pill emerald" title="All typed keys have 100% accuracy so far!">
-          ✨ 100% Accuracy on all ${weakKeys.length} tested keys!
+          100% Accuracy on all ${weakKeys.length} tested keys!
         </span>
       `;
       return;
@@ -1462,103 +1780,1241 @@ const AnalyticsService = {
 };
 
 // ============================================================================
-// 4.5 CURATED DEVELOPER CODE SNIPPETS (PYTHON, JAVASCRIPT, SQL)
+// 4.5 CURATED DEVELOPER CODE SNIPPETS (PYTHON, C++, JS, SQL, BASH, HTML/CSS)
+// 36+ realistic snippets across 6 languages & 3 difficulty tiers
 // ============================================================================
 const CodeSnippets = {
   python: [
     {
-      id: 'py-fib',
-      title: 'Fibonacci Generator',
-      filename: 'fibonacci.py',
-      icon: '🐍',
-      code: `def fibonacci(limit):
-  a, b = 0, 1
-  while a < limit:
-    yield a
-    a, b = b, a + b
+      id: 'py-metrics',
+      title: 'List Comprehension & Metrics',
+      filename: 'sales_metrics.py',
+      lang: 'python',
+      difficulty: 'Beginner',
+      icon: 'python',
+      description: 'Clean Python list comprehensions, conditionals, and dictionary aggregation.',
+      code: `def calculate_metrics(transactions):
+  valid_amounts = [t["amount"] for t in transactions if t["status"] == "completed"]
+  total_revenue = sum(valid_amounts)
+  avg_order = total_revenue / len(valid_amounts) if valid_amounts else 0.0
+  return {"total": round(total_revenue, 2), "average": round(avg_order, 2)}`
+    },
+    {
+      id: 'py-config',
+      title: 'Context Manager File Parser',
+      filename: 'config_parser.py',
+      lang: 'python',
+      difficulty: 'Beginner',
+      icon: 'python',
+      description: 'Safe file parsing using with context manager and string splitting.',
+      code: `def load_server_config(filepath):
+  config = {}
+  with open(filepath, "r", encoding="utf-8") as file:
+    for line in file:
+      clean_line = line.strip()
+      if clean_line and not clean_line.startswith("#"):
+        key, val = clean_line.split("=", 1)
+        config[key.strip()] = val.strip()
+  return config`
+    },
+    {
+      id: 'py-decorator',
+      title: 'Timing & Retry Decorator',
+      filename: 'retry_decorator.py',
+      lang: 'python',
+      difficulty: 'Intermediate',
+      icon: 'python',
+      description: 'Python function decorator with arguments, wraps, and error handling.',
+      code: `import time
+from functools import wraps
 
-squares = [x ** 2 for x in fibonacci(30)]
-print("Computed squares:", squares)`
+def retry(max_attempts=3, delay=1.0):
+  def decorator(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+      for attempt in range(1, max_attempts + 1):
+        try:
+          return func(*args, **kwargs)
+        except Exception as exc:
+          if attempt == max_attempts:
+            raise exc
+          time.sleep(delay)
+    return wrapper
+  return decorator`
+    },
+    {
+      id: 'py-django-view',
+      title: 'Django Class-Based API View',
+      filename: 'user_api_view.py',
+      lang: 'python',
+      difficulty: 'Intermediate',
+      icon: 'python',
+      description: 'Idiomatic Django class-based view with JSON response handling.',
+      code: `from django.http import JsonResponse
+from django.views import View
+
+class UserProfileView(View):
+  def get(self, request, user_id):
+    profile = {"id": user_id, "username": "dev_alex", "tier": "Pro"}
+    return JsonResponse({"status": "success", "data": profile})
+
+  def post(self, request, user_id):
+    return JsonResponse({"message": "Profile updated successfully"})`
+    },
+    {
+      id: 'py-lru-cache',
+      title: 'LRU Cache Implementation',
+      filename: 'lru_cache.py',
+      lang: 'python',
+      difficulty: 'DSA & Algorithms',
+      icon: 'python',
+      description: 'Double linked list and hash map implementation of an LRU cache.',
+      code: `class Node:
+  def __init__(self, key=0, val=0):
+    self.key, self.val = key, val
+    self.prev = self.next = None
+
+class LRUCache:
+  def __init__(self, capacity: int):
+    self.cap = capacity
+    self.cache = {}
+    self.head, self.tail = Node(), Node()
+    self.head.next, self.tail.prev = self.tail, self.head
+
+  def get(self, key: int) -> int:
+    if key in self.cache:
+      node = self.cache[key]
+      return node.val
+    return -1`
     },
     {
       id: 'py-bin-search',
-      title: 'Binary Search',
+      title: 'Binary Search & Bounds',
       filename: 'binary_search.py',
-      icon: '🐍',
-      code: `def binary_search(array, target):
-  low = 0
-  high = len(array) - 1
-  while low <= high:
-    mid = (low + high) // 2
-    if array[mid] == target:
+      lang: 'python',
+      difficulty: 'DSA & Algorithms',
+      icon: 'python',
+      description: 'Classic binary search algorithm in Python.',
+      code: `def binary_search(nums, target):
+  left, right = 0, len(nums) - 1
+  while left <= right:
+    mid = (left + right) // 2
+    if nums[mid] == target:
       return mid
-    elif array[mid] < target:
-      low = mid + 1
+    elif nums[mid] < target:
+      left = mid + 1
     else:
-      high = mid - 1
+      right = mid - 1
   return -1`
+    }
+  ],
+  cpp: [
+    {
+      id: 'cpp-vector-ops',
+      title: 'Vector Transformations',
+      filename: 'vector_ops.cpp',
+      lang: 'cpp',
+      difficulty: 'Beginner',
+      icon: 'gear',
+      description: 'C++ STL std::vector iterations and calculations.',
+      code: `#include <iostream>
+#include <vector>
+
+int main() {
+  std::vector<int> numbers = {10, 25, 30, 45, 50, 65};
+  int total = 0;
+  for (const int& val : numbers) {
+    if (val > 25) {
+      total += val * 2;
+    }
+  }
+  std::cout << "Computed total: " << total << std::endl;
+  return 0;
+}`
+    },
+    {
+      id: 'cpp-string-split',
+      title: 'String Tokenizer & Stream',
+      filename: 'string_parser.cpp',
+      lang: 'cpp',
+      difficulty: 'Beginner',
+      icon: 'gear',
+      description: 'String splitting with std::stringstream and std::vector.',
+      code: `#include <iostream>
+#include <sstream>
+#include <vector>
+
+std::vector<std::string> split(const std::string& text, char delimiter) {
+  std::vector<std::string> tokens;
+  std::stringstream stream(text);
+  std::string token;
+  while (std::getline(stream, token, delimiter)) {
+    if (!token.empty()) {
+      tokens.push_back(token);
+    }
+  }
+  return tokens;
+}`
+    },
+    {
+      id: 'cpp-smart-pointer',
+      title: 'Smart Pointers & Unique Ptr',
+      filename: 'smart_pointer.cpp',
+      lang: 'cpp',
+      difficulty: 'Intermediate',
+      icon: 'gear',
+      description: 'Modern C++ memory management with std::make_unique.',
+      code: `#include <memory>
+#include <string>
+#include <iostream>
+
+class ConnectionPool {
+public:
+  std::string endpoint;
+  explicit ConnectionPool(std::string ep) : endpoint(std::move(ep)) {}
+  void connect() {
+    std::cout << "Connected to: " << endpoint << std::endl;
+  }
+};
+
+std::unique_ptr<ConnectionPool> createPool(const std::string& host) {
+  return std::make_unique<ConnectionPool>(host);
+}`
+    },
+    {
+      id: 'cpp-thread-queue',
+      title: 'Thread-Safe Queue Template',
+      filename: 'thread_queue.cpp',
+      lang: 'cpp',
+      difficulty: 'Intermediate',
+      icon: 'gear',
+      description: 'C++ template queue with std::mutex and std::lock_guard.',
+      code: `#include <queue>
+#include <mutex>
+
+template <typename T>
+class SafeQueue {
+private:
+  std::queue<T> buffer;
+  std::mutex lock;
+public:
+  void push(T value) {
+    std::lock_guard<std::mutex> guard(lock);
+    buffer.push(std::move(value));
+  }
+  bool empty() {
+    std::lock_guard<std::mutex> guard(lock);
+    return buffer.empty();
+  }
+};`
+    },
+    {
+      id: 'cpp-lower-bound',
+      title: 'Fast Lower Bound Search',
+      filename: 'lower_bound.cpp',
+      lang: 'cpp',
+      difficulty: 'DSA & Algorithms',
+      icon: 'gear',
+      description: 'Iterative lower-bound algorithm for sorted vectors.',
+      code: `#include <vector>
+
+int lowerBound(const std::vector<int>& arr, int target) {
+  int low = 0;
+  int high = static_cast<int>(arr.size());
+  while (low < high) {
+    int mid = low + (high - low) / 2;
+    if (arr[mid] >= target) {
+      high = mid;
+    } else {
+      low = mid + 1;
+    }
+  }
+  return low;
+}`
+    },
+    {
+      id: 'cpp-dfs-cycle',
+      title: 'DFS Graph Cycle Detection',
+      filename: 'dfs_graph.cpp',
+      lang: 'cpp',
+      difficulty: 'DSA & Algorithms',
+      icon: 'gear',
+      description: 'Graph cycle detection using 3-state depth-first search.',
+      code: `#include <vector>
+
+bool hasCycle(int node, const std::vector<std::vector<int>>& adj, std::vector<int>& visited) {
+  visited[node] = 1;
+  for (int next : adj[node]) {
+    if (visited[next] == 1) return true;
+    if (visited[next] == 0 && hasCycle(next, adj, visited)) return true;
+  }
+  visited[node] = 2;
+  return false;
+}`
     }
   ],
   javascript: [
     {
-      id: 'js-async-fetch',
-      title: 'Async User Pipeline',
-      filename: 'fetch_users.js',
-      icon: '⚡',
-      code: `async function fetchActiveUsers(endpoint) {
-  const response = await fetch(endpoint);
-  const data = await response.json();
-  return data.filter(user => user.isActive)
-    .map(u => ({ id: u.id, email: u.email }));
-}`
+      id: 'js-pipeline',
+      title: 'Array Pipeline & Reduce',
+      filename: 'array_pipeline.js',
+      lang: 'javascript',
+      difficulty: 'Beginner',
+      icon: 'bolt',
+      description: 'Functional data transformation using filter, map, and reduce.',
+      code: `const inventory = [
+  { item: "Keyboard", price: 89, inStock: true },
+  { item: "Mouse", price: 49, inStock: false },
+  { item: "Monitor", price: 299, inStock: true }
+];
+
+const totalValue = inventory
+  .filter(product => product.inStock)
+  .map(product => product.price)
+  .reduce((acc, curr) => acc + curr, 0);`
     },
     {
       id: 'js-debounce',
-      title: 'Debounce Utility',
+      title: 'Debounce Function Utility',
       filename: 'debounce.js',
-      icon: '⚡',
-      code: `function debounce(fn, wait = 250) {
-  let timeout = null;
+      lang: 'javascript',
+      difficulty: 'Beginner',
+      icon: 'bolt',
+      description: 'Standard closure-based debounce function for event handling.',
+      code: `function debounce(callback, delay = 300) {
+  let timerId = null;
   return function(...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => {
-      fn.apply(this, args);
-    }, wait);
+    if (timerId) clearTimeout(timerId);
+    timerId = setTimeout(() => {
+      callback.apply(this, args);
+    }, delay);
   };
+}`
+    },
+    {
+      id: 'js-fetch-retry',
+      title: 'Async Fetch with Backoff',
+      filename: 'fetch_retry.js',
+      lang: 'javascript',
+      difficulty: 'Intermediate',
+      icon: 'bolt',
+      description: 'Async/await network request pipeline with exponential backoff.',
+      code: `async function fetchWithRetry(url, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(\`HTTP \${response.status}\`);
+      return await response.json();
+    } catch (err) {
+      if (attempt === maxRetries) throw err;
+      await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 200));
+    }
+  }
+}`
+    },
+    {
+      id: 'js-event-bus',
+      title: 'Typed Event Emitter',
+      filename: 'event_bus.js',
+      lang: 'javascript',
+      difficulty: 'Intermediate',
+      icon: 'bolt',
+      description: 'Clean pub/sub event bus pattern using JavaScript Maps and Sets.',
+      code: `class EventBus {
+  constructor() {
+    this.handlers = new Map();
+  }
+
+  on(eventName, listener) {
+    if (!this.handlers.has(eventName)) {
+      this.handlers.set(eventName, new Set());
+    }
+    this.handlers.get(eventName).add(listener);
+    return () => this.handlers.get(eventName).delete(listener);
+  }
+
+  emit(eventName, payload) {
+    const list = this.handlers.get(eventName);
+    if (list) list.forEach(cb => cb(payload));
+  }
+}`
+    },
+    {
+      id: 'js-min-heap',
+      title: 'Min-Heap Priority Queue',
+      filename: 'min_heap.js',
+      lang: 'javascript',
+      difficulty: 'DSA & Algorithms',
+      icon: 'bolt',
+      description: 'Binary min-heap implementation with bubble-up reorganization.',
+      code: `class MinHeap {
+  constructor() {
+    this.heap = [];
+  }
+
+  push(val) {
+    this.heap.push(val);
+    this._bubbleUp(this.heap.length - 1);
+  }
+
+  _bubbleUp(idx) {
+    while (idx > 0) {
+      const parentIdx = Math.floor((idx - 1) / 2);
+      if (this.heap[idx] >= this.heap[parentIdx]) break;
+      [this.heap[idx], this.heap[parentIdx]] = [this.heap[parentIdx], this.heap[idx]];
+      idx = parentIdx;
+    }
+  }
+}`
+    },
+    {
+      id: 'js-topo-sort',
+      title: 'Topological Sort for DAGs',
+      filename: 'topo_sort.js',
+      lang: 'javascript',
+      difficulty: 'DSA & Algorithms',
+      icon: 'bolt',
+      description: 'Kahn algorithm for topological sorting of directed graphs.',
+      code: `function topologicalSort(numNodes, edges) {
+  const inDegree = new Array(numNodes).fill(0);
+  const graph = Array.from({ length: numNodes }, () => []);
+  edges.forEach(([u, v]) => {
+    graph[u].push(v);
+    inDegree[v]++;
+  });
+  const queue = [];
+  for (let i = 0; i < numNodes; i++) {
+    if (inDegree[i] === 0) queue.push(i);
+  }
+  return queue;
 }`
     }
   ],
   sql: [
     {
-      id: 'sql-window-rank',
-      title: 'Window Function Ranking',
-      filename: 'dept_salaries.sql',
-      icon: '🗄️',
-      code: `SELECT dept_id, employee_name, salary,
-  AVG(salary) OVER (PARTITION BY dept_id) AS avg_dept_salary,
-  RANK() OVER (PARTITION BY dept_id ORDER BY salary DESC) AS rank
-FROM employees
-WHERE is_active = TRUE
-ORDER BY dept_id, rank;`
+      id: 'sql-revenue-agg',
+      title: 'Customer Revenue Aggregations',
+      filename: 'customer_revenue.sql',
+      lang: 'sql',
+      difficulty: 'Beginner',
+      icon: 'sql',
+      description: 'SQL GROUP BY, HAVING, and aggregate metrics.',
+      code: `SELECT
+  customer_id,
+  COUNT(order_id) AS total_orders,
+  SUM(order_total) AS total_spent,
+  ROUND(AVG(order_total), 2) AS avg_basket_size
+FROM orders
+WHERE status = 'shipped'
+GROUP BY customer_id
+HAVING SUM(order_total) >= 500
+ORDER BY total_spent DESC;`
     },
     {
-      id: 'sql-monthly-rev',
-      title: 'Monthly Revenue CTE',
-      filename: 'monthly_revenue.sql',
-      icon: '🗄️',
-      code: `WITH monthly_summary AS (
-  SELECT DATE_TRUNC('month', order_date) AS order_month,
-    SUM(total_amount) AS revenue,
-    COUNT(order_id) AS total_orders
-  FROM sales_orders
-  GROUP BY order_month
+      id: 'sql-table-joins',
+      title: 'Multi-Table Inner & Left Joins',
+      filename: 'orders_catalog_join.sql',
+      lang: 'sql',
+      difficulty: 'Beginner',
+      icon: 'sql',
+      description: 'Multi-table relational joins with filtering.',
+      code: `SELECT
+  u.username,
+  o.order_id,
+  p.product_name,
+  oi.quantity,
+  oi.unit_price
+FROM users u
+INNER JOIN orders o ON u.id = o.user_id
+INNER JOIN order_items oi ON o.order_id = oi.order_id
+LEFT JOIN products p ON oi.product_id = p.id
+WHERE o.created_at >= '2026-01-01';`
+    },
+    {
+      id: 'sql-window-rank',
+      title: 'Window Functions & Partitioning',
+      filename: 'window_ranking.sql',
+      lang: 'sql',
+      difficulty: 'Intermediate',
+      icon: 'sql',
+      description: 'DENSE_RANK() and AVG() window functions partitioned by department.',
+      code: `SELECT
+  department_id,
+  employee_id,
+  salary,
+  DENSE_RANK() OVER (
+    PARTITION BY department_id
+    ORDER BY salary DESC
+  ) AS dept_rank,
+  AVG(salary) OVER (
+    PARTITION BY department_id
+  ) AS dept_avg_salary
+FROM employees;`
+    },
+    {
+      id: 'sql-monthly-cte',
+      title: 'Monthly Cohort Revenue CTE',
+      filename: 'monthly_revenue_cte.sql',
+      lang: 'sql',
+      difficulty: 'Intermediate',
+      icon: 'sql',
+      description: 'Common Table Expression (CTE) for monthly revenue trends.',
+      code: `WITH monthly_metrics AS (
+  SELECT
+    DATE_TRUNC('month', order_date) AS sales_month,
+    COUNT(DISTINCT customer_id) AS active_buyers,
+    SUM(total_amount) AS gross_sales
+  FROM sales
+  GROUP BY sales_month
 )
-SELECT order_month, revenue, total_orders
-FROM monthly_summary
-ORDER BY order_month DESC;`
+SELECT sales_month, active_buyers, gross_sales
+FROM monthly_metrics
+ORDER BY sales_month DESC;`
+    },
+    {
+      id: 'sql-recursive-org',
+      title: 'Recursive CTE Org Hierarchy',
+      filename: 'org_hierarchy.sql',
+      lang: 'sql',
+      difficulty: 'DSA & Algorithms',
+      icon: 'sql',
+      description: 'Recursive common table expression navigating hierarchical employee trees.',
+      code: `WITH RECURSIVE org_tree AS (
+  SELECT id, manager_id, full_name, 1 AS depth
+  FROM team_members
+  WHERE manager_id IS NULL
+  UNION ALL
+  SELECT m.id, m.manager_id, m.full_name, t.depth + 1
+  FROM team_members m
+  INNER JOIN org_tree t ON m.manager_id = t.id
+)
+SELECT id, full_name, depth FROM org_tree ORDER BY depth;`
+    },
+    {
+      id: 'sql-running-avg',
+      title: 'Cumulative Rolling Average',
+      filename: 'moving_average.sql',
+      lang: 'sql',
+      difficulty: 'DSA & Algorithms',
+      icon: 'sql',
+      description: '7-day moving window sum and average using window frames.',
+      code: `SELECT
+  recorded_date,
+  daily_volume,
+  SUM(daily_volume) OVER (
+    ORDER BY recorded_date
+    ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+  ) AS rolling_7day_sum,
+  AVG(daily_volume) OVER (
+    ORDER BY recorded_date
+    ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+  ) AS rolling_7day_avg
+FROM sensor_telemetry;`
+    }
+  ],
+  bash: [
+    {
+      id: 'bash-log-filter',
+      title: 'Log Analyzer & Grep Pipeline',
+      filename: 'log_analyzer.sh',
+      lang: 'bash',
+      difficulty: 'Beginner',
+      icon: 'terminal',
+      description: 'Awk, grep, sort, and uniq pipelines for web server log analysis.',
+      code: `#!/bin/bash
+set -euo pipefail
+LOG_FILE="/var/log/nginx/access.log"
+echo "--- Top 10 IP Addresses by Request Count ---"
+awk '{print $1}' "$LOG_FILE" | sort | uniq -c | sort -nr | head -n 10
+echo "--- HTTP 500 Errors ---"
+grep " 500 " "$LOG_FILE" | tail -n 20`
+    },
+    {
+      id: 'bash-sys-health',
+      title: 'System Resources Health Check',
+      filename: 'sys_health.sh',
+      lang: 'bash',
+      difficulty: 'Beginner',
+      icon: 'terminal',
+      description: 'Live server health snapshot checking uptime, memory, and disk.',
+      code: `#!/bin/bash
+echo "=== System Health Snapshot ==="
+echo "Uptime: $(uptime -p)"
+echo "Memory Usage:"
+free -h | awk 'NR==2{printf "Used: %s / Total: %s (%.2f%%)\\n", $3, $2, $3/$2*100}'
+echo "Disk Utilization:"
+df -h / | awk 'NR==2{print "Root FS: " $5 " used (" $4 " available)"}'`
+    },
+    {
+      id: 'bash-docker-clean',
+      title: 'Docker Container Manager',
+      filename: 'docker_cleanup.sh',
+      lang: 'bash',
+      difficulty: 'Intermediate',
+      icon: 'terminal',
+      description: 'Automated docker pruning and service cluster restart.',
+      code: `#!/bin/bash
+PROJECT_NAME="topic-typer"
+echo "Cleaning dangling docker images and containers..."
+docker ps -a --filter "status=exited" -q | xargs -r docker rm -v
+docker images -f "dangling=true" -q | xargs -r docker rmi
+echo "Restarting service cluster for $PROJECT_NAME..."
+docker compose restart web worker`
+    },
+    {
+      id: 'bash-git-worktree',
+      title: 'Git Worktree Branch Setup',
+      filename: 'git_worktree.sh',
+      lang: 'bash',
+      difficulty: 'Intermediate',
+      icon: 'terminal',
+      description: 'Git CLI automation for spinning up isolated worktree workspaces.',
+      code: `#!/bin/bash
+FEATURE_BRANCH="$1"
+TARGET_DIR="../branches/$FEATURE_BRANCH"
+if [ -z "$FEATURE_BRANCH" ]; then
+  echo "Usage: $0 <branch-name>"
+  exit 1
+fi
+git fetch origin main
+git worktree add -b "$FEATURE_BRANCH" "$TARGET_DIR" origin/main
+echo "Worktree active at $TARGET_DIR"`
+    },
+    {
+      id: 'bash-batch-convert',
+      title: 'Parallel File Conversion',
+      filename: 'batch_convert.sh',
+      lang: 'bash',
+      difficulty: 'DSA & Algorithms',
+      icon: 'terminal',
+      description: 'Multiprocess image conversion utilizing find, xargs, and parallel workers.',
+      code: `#!/bin/bash
+SOURCE_DIR="./raw_assets"
+DEST_DIR="./optimized"
+mkdir -p "$DEST_DIR"
+find "$SOURCE_DIR" -type f -name "*.png" -print0 | xargs -0 -P 4 -I {} bash -c '
+  base=$(basename "{}" .png)
+  cwebp -q 85 "{}" -o "'"$DEST_DIR"'/\${base}.webp"
+'
+echo "Batch compression finished."`
+    },
+    {
+      id: 'bash-rate-monitor',
+      title: 'Nginx DoS Traffic Monitor',
+      filename: 'rate_monitor.sh',
+      lang: 'bash',
+      difficulty: 'DSA & Algorithms',
+      icon: 'terminal',
+      description: 'Automated request rate monitoring and threshold checking script.',
+      code: `#!/bin/bash
+THRESHOLD=50
+tail -n 1000 /var/log/nginx/access.log | awk '{print $1}' | sort | uniq -c | while read -r count ip; do
+  if [ "$count" -gt "$THRESHOLD" ]; then
+    echo "[ALERT] Potential DoS from $ip: $count requests"
+    iptables -A INPUT -s "$ip" -j DROP
+  fi
+done`
+    }
+  ],
+  html_css: [
+    {
+      id: 'web-navbar',
+      title: 'Responsive Flexbox Header',
+      filename: 'navbar.html',
+      lang: 'html_css',
+      difficulty: 'Beginner',
+      icon: 'html_css',
+      description: 'Clean semantic HTML header with modern navigation links.',
+      code: `<header class="navbar">
+  <div class="nav-brand">
+    <img src="logo.svg" alt="App Logo" class="brand-img" />
+    <span class="brand-title">TopicTyper</span>
+  </div>
+  <nav class="nav-links">
+    <a href="/arena" class="nav-item active">Practice</a>
+    <a href="/stats" class="nav-item">Analytics</a>
+  </nav>
+</header>`
+    },
+    {
+      id: 'web-grid-cards',
+      title: 'Responsive CSS Grid Cards',
+      filename: 'card_grid.css',
+      lang: 'html_css',
+      difficulty: 'Beginner',
+      icon: 'html_css',
+      description: 'Auto-fit CSS grid layout with subtle hover elevation transitions.',
+      code: `.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  padding: 2rem;
+}
+.card {
+  border-radius: 12px;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover {
+  transform: translateY(-4px);
+}`
+    },
+    {
+      id: 'web-theme-toggle',
+      title: 'Modern Animated Toggle Switch',
+      filename: 'toggle_switch.html',
+      lang: 'html_css',
+      difficulty: 'Intermediate',
+      icon: 'html_css',
+      description: 'Accessible toggle switch component with smooth CSS transitions.',
+      code: `<label class="theme-switch" aria-label="Toggle dark mode">
+  <input type="checkbox" id="theme-toggle" class="switch-checkbox" />
+  <span class="slider round">
+    <span class="icon sun">&#9728;</span>
+    <span class="icon moon">&#9790;</span>
+  </span>
+</label>
+<style>
+  .theme-switch { position: relative; width: 60px; height: 32px; }
+  .slider { position: absolute; inset: 0; background: #334155; border-radius: 34px; }
+</style>`
+    },
+    {
+      id: 'web-modal-dialog',
+      title: 'Glassmorphic Modal Dialog',
+      filename: 'modal_backdrop.css',
+      lang: 'html_css',
+      difficulty: 'Intermediate',
+      icon: 'html_css',
+      description: 'Modern dialog overlay with backdrop blur and depth drop-shadows.',
+      code: `.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+}
+.modal-dialog {
+  max-width: 520px;
+  width: 90%;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+}`
+    },
+    {
+      id: 'web-shimmer-loader',
+      title: 'Skeleton Shimmer Loading Card',
+      filename: 'skeleton_shimmer.css',
+      lang: 'html_css',
+      difficulty: 'DSA & Algorithms',
+      icon: 'html_css',
+      description: 'Hardware-accelerated CSS gradient keyframe shimmer animation.',
+      code: `.skeleton-box {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+  border-radius: 6px;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}`
+    },
+    {
+      id: 'web-accordion',
+      title: 'Accessible Details Accordion',
+      filename: 'accordion.html',
+      lang: 'html_css',
+      difficulty: 'DSA & Algorithms',
+      icon: 'html_css',
+      description: 'Pure semantic HTML details and summary interactive accordion.',
+      code: `<details class="accordion-item">
+  <summary class="accordion-header">
+    <span>Data Structures & Algorithms</span>
+    <span class="chevron">&#9662;</span>
+  </summary>
+  <div class="accordion-content">
+    <p>Practice tree traversals, dynamic programming, and binary search.</p>
+  </div>
+</details>`
     }
   ]
 };
+
+// Specialized Drills (Requirement 4)
+const SPECIALIZED_DRILLS = [
+  {
+    id: 'symbols-gauntlet',
+    title: 'Symbols & Brackets Gauntlet',
+    category: 'Drill',
+    tag: 'Developer Syntax',
+    icon: 'bolt',
+    difficulty: 'Pro',
+    description: 'Heavy practice on {} [] () <> => != && || ; : for programmers.',
+    text: 'if (key >= 0 && arr[i] != null) { return { id: items[key], valid: (x > 0 || y < 10) }; } const fn = (a, b) => (a <= b ? [a, b] : [b, a]); if (status === 200 && (user.role === "admin" || user.id === 1)) { config[type] = { active: true, flags: [1, 2, 4] }; }',
+  },
+  {
+    id: 'linux-git-cli',
+    title: 'Linux & Git Command Line',
+    category: 'Drill',
+    tag: 'Terminal Mastery',
+    icon: 'terminal',
+    difficulty: 'Intermediate',
+    description: 'Real terminal commands: git, grep, awk, docker, chmod, and ssh.',
+    text: 'git checkout -b feature/auth-upgrade && git commit -m "feat: user profile engine" && git push origin HEAD. docker run -d --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=secret postgres:16. grep -rn "TODO" src/ | awk -F: \'{print $1, $2}\' | sort | uniq -c. chmod 755 deploy.sh && ssh -i ~/.ssh/id_rsa user@192.168.1.100 "systemctl restart nginx".',
+  },
+  {
+    id: 'numbers-data-sprint',
+    title: 'Numbers & Data Sprint',
+    category: 'Drill',
+    tag: 'Precision Alphanumeric',
+    icon: 'number',
+    difficulty: 'Beginner',
+    description: 'Alphanumeric codes, IP addresses, dates, and financial figures.',
+    text: 'Invoice #98214: billed $14,750.80 on 2026-11-13 via wire transfer. Server node-04 IP: 192.168.10.45 port: 8443 latency: 12.4ms packet loss: 0.02%. Order ID: 489-320-8199 quantity: 1,250 unit price: $42.50 discount: 15% subtotal: $45,156.25.',
+  },
+];
+
+// ============================================================================
+// 4.8 LIVE TACTILE VISUALIZERS: KEYCAP VISUALIZER & RHYTHM SPEED WAVEFORM
+// ============================================================================
+
+class KeycapVisualizer {
+  constructor(options = {}) {
+    this.container = options.container;
+    this.boardEl = options.boardEl;
+    this.nextCharEl = options.nextCharEl;
+    this.toggleBtn = options.toggleBtn;
+    this.toggleText = options.toggleText;
+    this.storageKey = options.storageKey || 'topictyper_keycap_viz';
+
+    this.keyElements = new Map();
+    this.targetKeyElements = [];
+    this.shiftKeyElements = [];
+    this.currentTargetChar = null;
+
+    if (!this.container || !this.boardEl) return;
+
+    this.initLayout();
+    this.bindEvents();
+    this.loadState();
+  }
+
+  static get KEY_ROWS() {
+    return [
+      [
+        { code: 'Backquote', label: '`', shift: '~' },
+        { code: 'Digit1', label: '1', shift: '!' },
+        { code: 'Digit2', label: '2', shift: '@' },
+        { code: 'Digit3', label: '3', shift: '#' },
+        { code: 'Digit4', label: '4', shift: '$' },
+        { code: 'Digit5', label: '5', shift: '%' },
+        { code: 'Digit6', label: '6', shift: '^' },
+        { code: 'Digit7', label: '7', shift: '&' },
+        { code: 'Digit8', label: '8', shift: '*' },
+        { code: 'Digit9', label: '9', shift: '(' },
+        { code: 'Digit0', label: '0', shift: ')' },
+        { code: 'Minus', label: '-', shift: '_' },
+        { code: 'Equal', label: '=', shift: '+' },
+        { code: 'Backspace', label: 'Bksp', flex: 1.6 }
+      ],
+      [
+        { code: 'Tab', label: 'Tab', flex: 1.4 },
+        { code: 'KeyQ', label: 'Q', char: 'q' },
+        { code: 'KeyW', label: 'W', char: 'w' },
+        { code: 'KeyE', label: 'E', char: 'e' },
+        { code: 'KeyR', label: 'R', char: 'r' },
+        { code: 'KeyT', label: 'T', char: 't' },
+        { code: 'KeyY', label: 'Y', char: 'y' },
+        { code: 'KeyU', label: 'U', char: 'u' },
+        { code: 'KeyI', label: 'I', char: 'i' },
+        { code: 'KeyO', label: 'O', char: 'o' },
+        { code: 'KeyP', label: 'P', char: 'p' },
+        { code: 'BracketLeft', label: '[', shift: '{' },
+        { code: 'BracketRight', label: ']', shift: '}' },
+        { code: 'Backslash', label: '\\', shift: '|', flex: 1.2 }
+      ],
+      [
+        { code: 'CapsLock', label: 'Caps', flex: 1.7 },
+        { code: 'KeyA', label: 'A', char: 'a' },
+        { code: 'KeyS', label: 'S', char: 's' },
+        { code: 'KeyD', label: 'D', char: 'd' },
+        { code: 'KeyF', label: 'F', char: 'f', homing: true },
+        { code: 'KeyG', label: 'G', char: 'g' },
+        { code: 'KeyH', label: 'H', char: 'h' },
+        { code: 'KeyJ', label: 'J', char: 'j', homing: true },
+        { code: 'KeyK', label: 'K', char: 'k' },
+        { code: 'KeyL', label: 'L', char: 'l' },
+        { code: 'Semicolon', label: ';', shift: ':' },
+        { code: 'Quote', label: "'", shift: '"' },
+        { code: 'Enter', label: 'Enter ↵', flex: 1.9 }
+      ],
+      [
+        { code: 'ShiftLeft', label: 'Shift', flex: 2.1, isShift: true },
+        { code: 'KeyZ', label: 'Z', char: 'z' },
+        { code: 'KeyX', label: 'X', char: 'x' },
+        { code: 'KeyC', label: 'C', char: 'c' },
+        { code: 'KeyV', label: 'V', char: 'v' },
+        { code: 'KeyB', label: 'B', char: 'b' },
+        { code: 'KeyN', label: 'N', char: 'n' },
+        { code: 'KeyM', label: 'M', char: 'm' },
+        { code: 'Comma', label: ',', shift: '<' },
+        { code: 'Period', label: '.', shift: '>' },
+        { code: 'Slash', label: '/', shift: '?' },
+        { code: 'ShiftRight', label: 'Shift', flex: 2.4, isShift: true }
+      ],
+      [
+        { code: 'Space', label: 'Space', char: ' ', flex: 6.5, isSpace: true }
+      ]
+    ];
+  }
+
+  initLayout() {
+    this.boardEl.innerHTML = '';
+    this.keyElements.clear();
+    this.shiftKeyElements = [];
+
+    KeycapVisualizer.KEY_ROWS.forEach(row => {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'keycap-row';
+
+      row.forEach(keyDef => {
+        const keyEl = document.createElement('div');
+        keyEl.className = 'keycap';
+        keyEl.dataset.code = keyDef.code;
+        if (keyDef.flex) {
+          keyEl.style.flex = `${keyDef.flex} 1 0px`;
+        } else {
+          keyEl.style.flex = '1 1 0px';
+        }
+        if (keyDef.homing) keyEl.classList.add('keycap-homing');
+        if (keyDef.isSpace) keyEl.classList.add('keycap-space');
+        keyEl.textContent = keyDef.label;
+
+        rowEl.appendChild(keyEl);
+        this.keyElements.set(keyDef.code, keyEl);
+        if (keyDef.char) this.keyElements.set(keyDef.char, keyEl);
+        if (keyDef.label) this.keyElements.set(keyDef.label.toLowerCase(), keyEl);
+        if (keyDef.shift) this.keyElements.set(keyDef.shift, keyEl);
+        if (keyDef.isShift) this.shiftKeyElements.push(keyEl);
+      });
+
+      this.boardEl.appendChild(rowEl);
+    });
+  }
+
+  bindEvents() {
+    if (this.toggleBtn) {
+      this.toggleBtn.addEventListener('click', () => {
+        if (typeof SoundService !== 'undefined') SoundService.playUITick();
+        this.toggleVisibility();
+      });
+    }
+  }
+
+  loadState() {
+    const saved = localStorage.getItem(this.storageKey);
+    const isHidden = (saved === '0');
+    if (isHidden) {
+      this.container.classList.add('is-collapsed');
+      if (this.toggleText) this.toggleText.textContent = 'Show Keys';
+    } else {
+      this.container.classList.remove('is-collapsed');
+      if (this.toggleText) this.toggleText.textContent = 'Hide Keys';
+    }
+  }
+
+  toggleVisibility() {
+    const isCollapsed = this.container.classList.toggle('is-collapsed');
+    localStorage.setItem(this.storageKey, isCollapsed ? '0' : '1');
+    if (this.toggleText) {
+      this.toggleText.textContent = isCollapsed ? 'Show Keys' : 'Hide Keys';
+    }
+  }
+
+  updateTargetKey(targetChar) {
+    this.currentTargetChar = targetChar;
+
+    // Clear previous highlights
+    this.targetKeyElements.forEach(el => el.classList.remove('key-target'));
+    this.targetKeyElements = [];
+    this.shiftKeyElements.forEach(el => el.classList.remove('key-shift-active'));
+
+    if (!targetChar) {
+      if (this.nextCharEl) this.nextCharEl.textContent = 'Done!';
+      return;
+    }
+
+    let displayHint = targetChar;
+    let targetCode = null;
+    let needsShift = false;
+
+    if (targetChar === ' ') {
+      displayHint = 'Space';
+      targetCode = 'Space';
+    } else if (targetChar === '\n') {
+      displayHint = 'Enter ↵';
+      targetCode = 'Enter';
+    } else if (targetChar === '\t') {
+      displayHint = 'Tab ⇥';
+      targetCode = 'Tab';
+    } else if (/[A-Z]/.test(targetChar)) {
+      needsShift = true;
+      displayHint = `${targetChar} (Shift+${targetChar.toLowerCase()})`;
+      targetCode = `Key${targetChar}`;
+    } else if (/[a-z]/.test(targetChar)) {
+      targetCode = `Key${targetChar.toUpperCase()}`;
+    } else if (/[0-9]/.test(targetChar)) {
+      targetCode = `Digit${targetChar}`;
+    } else {
+      const shiftedMap = {
+        '~': { code: 'Backquote', base: '`' },
+        '!': { code: 'Digit1', base: '1' },
+        '@': { code: 'Digit2', base: '2' },
+        '#': { code: 'Digit3', base: '3' },
+        '$': { code: 'Digit4', base: '4' },
+        '%': { code: 'Digit5', base: '5' },
+        '^': { code: 'Digit6', base: '6' },
+        '&': { code: 'Digit7', base: '7' },
+        '*': { code: 'Digit8', base: '8' },
+        '(': { code: 'Digit9', base: '9' },
+        ')': { code: 'Digit0', base: '0' },
+        '_': { code: 'Minus', base: '-' },
+        '+': { code: 'Equal', base: '=' },
+        '{': { code: 'BracketLeft', base: '[' },
+        '}': { code: 'BracketRight', base: ']' },
+        '|': { code: 'Backslash', base: '\\' },
+        ':': { code: 'Semicolon', base: ';' },
+        '"': { code: 'Quote', base: "'" },
+        '<': { code: 'Comma', base: ',' },
+        '>': { code: 'Period', base: '.' },
+        '?': { code: 'Slash', base: '/' }
+      };
+
+      const unshiftedMap = {
+        '`': 'Backquote',
+        '-': 'Minus',
+        '=': 'Equal',
+        '[': 'BracketLeft',
+        ']': 'BracketRight',
+        '\\': 'Backslash',
+        ';': 'Semicolon',
+        "'": 'Quote',
+        ',': 'Comma',
+        '.': 'Period',
+        '/': 'Slash'
+      };
+
+      if (shiftedMap[targetChar]) {
+        needsShift = true;
+        targetCode = shiftedMap[targetChar].code;
+        displayHint = `${targetChar} (Shift+${shiftedMap[targetChar].base})`;
+      } else if (unshiftedMap[targetChar]) {
+        targetCode = unshiftedMap[targetChar];
+      }
+    }
+
+    if (this.nextCharEl) {
+      this.nextCharEl.textContent = displayHint;
+    }
+
+    if (needsShift) {
+      this.shiftKeyElements.forEach(el => el.classList.add('key-shift-active'));
+    }
+
+    if (targetCode && this.keyElements.has(targetCode)) {
+      const el = this.keyElements.get(targetCode);
+      el.classList.add('key-target');
+      this.targetKeyElements.push(el);
+    }
+  }
+
+  flashKey(typedChar, isCorrect) {
+    if (!typedChar) return;
+
+    let el = null;
+    if (typedChar === ' ') el = this.keyElements.get('Space');
+    else if (typedChar === '\n') el = this.keyElements.get('Enter');
+    else if (typedChar === '\t') el = this.keyElements.get('Tab');
+    else if (typedChar === 'Backspace') el = this.keyElements.get('Backspace');
+    else if (/[a-zA-Z]/.test(typedChar)) el = this.keyElements.get(`Key${typedChar.toUpperCase()}`);
+    else if (/[0-9]/.test(typedChar)) el = this.keyElements.get(`Digit${typedChar}`);
+    else if (this.keyElements.has(typedChar)) el = this.keyElements.get(typedChar);
+
+    if (el) {
+      const flashCls = isCorrect ? 'key-flash-correct' : 'key-flash-error';
+      el.classList.remove('key-flash-correct', 'key-flash-error');
+      void el.offsetWidth;
+      el.classList.add(flashCls);
+      setTimeout(() => {
+        el.classList.remove(flashCls);
+      }, 160);
+    }
+  }
+}
+
+class RhythmWaveformVisualizer {
+  constructor(canvasEl, comboPillEl, comboLabelEl) {
+    this.canvas = canvasEl;
+    this.comboPill = comboPillEl;
+    this.comboLabel = comboLabelEl;
+    if (!this.canvas) return;
+    this.ctx = this.canvas.getContext('2d');
+
+    this.currentWpm = 0;
+    this.targetWpm = 0;
+    this.combo = 0;
+    this.isTyping = false;
+    this.energy = 0.15;
+    this.animTime = 0;
+    this.numBars = 52;
+
+    this.resize();
+    this.onResize = () => this.resize();
+    window.addEventListener('resize', this.onResize);
+
+    this.render = this.render.bind(this);
+
+    // Tab visibility handling: pause canvas animation when tab is hidden, resume when visible
+    this.onVisibilityChange = () => {
+      if (document.hidden) {
+        if (this.rafId) {
+          cancelAnimationFrame(this.rafId);
+          this.rafId = null;
+        }
+      } else {
+        if (!this.rafId) {
+          this.rafId = requestAnimationFrame(this.render);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
+
+    this.rafId = requestAnimationFrame(this.render);
+  }
+
+  resize() {
+    if (!this.canvas) return;
+    const rect = this.canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    this.width = rect.width || this.canvas.offsetWidth || 600;
+    this.height = rect.height || 14;
+    this.canvas.width = Math.floor(this.width * dpr);
+    this.canvas.height = Math.floor(this.height * dpr);
+    if (this.ctx) {
+      this.ctx.scale(dpr, dpr);
+    }
+  }
+
+  setSpeed(wpm, combo) {
+    this.targetWpm = Math.max(0, wpm || 0);
+    if (combo !== undefined) this.setCombo(combo);
+  }
+
+  setCombo(combo) {
+    this.combo = combo || 0;
+    if (this.comboPill && this.comboLabel) {
+      if (this.combo >= 5) {
+        this.comboLabel.textContent = `${this.combo} Streak`;
+        this.comboPill.classList.remove('hidden');
+      } else {
+        this.comboPill.classList.add('hidden');
+      }
+    }
+  }
+
+  recordKeystroke(isCorrect, wpm, combo) {
+    this.targetWpm = Math.max(0, wpm || 0);
+    this.setCombo(combo);
+    this.energy = Math.min(1.0, this.energy + (isCorrect ? 0.25 : 0.08));
+    this.isTyping = true;
+  }
+
+  setTypingState(isTyping, wpm) {
+    this.isTyping = isTyping;
+    if (wpm !== undefined) this.targetWpm = wpm;
+    if (!isTyping) {
+      this.targetWpm = 0;
+    }
+  }
+
+  render() {
+    if (document.hidden) {
+      this.rafId = null;
+      return;
+    }
+    if (!this.ctx) return;
+    const w = this.width;
+    const h = this.height;
+
+    this.ctx.clearRect(0, 0, w, h);
+
+    // Smooth speed and energy easing
+    this.currentWpm += (this.targetWpm - this.currentWpm) * 0.08;
+    this.energy = Math.max(0.08, this.energy - 0.008);
+    this.animTime += 0.04 + (this.currentWpm / 150) * 0.08;
+
+    const barWidth = Math.max(2, (w / this.numBars) - 2);
+    const step = w / this.numBars;
+    const speedFactor = Math.min(2.5, Math.max(0.2, this.currentWpm / 35));
+
+    // Dynamic gradient based on WPM and Combo Streak
+    let colorStart, colorEnd;
+    if (this.combo >= 25 || this.currentWpm >= 80) {
+      colorStart = '#f59e0b';
+      colorEnd = '#ec4899';
+    } else if (this.combo >= 10 || this.currentWpm >= 50) {
+      colorStart = '#10b981';
+      colorEnd = '#38bdf8';
+    } else {
+      colorStart = 'rgba(56, 189, 248, 0.4)';
+      colorEnd = 'rgba(99, 102, 241, 0.6)';
+    }
+
+    const grad = this.ctx.createLinearGradient(0, 0, w, 0);
+    grad.addColorStop(0, colorStart);
+    grad.addColorStop(0.5, colorEnd);
+    grad.addColorStop(1, colorStart);
+
+    this.ctx.fillStyle = grad;
+
+    for (let i = 0; i < this.numBars; i++) {
+      const x = i * step + 1;
+      const wave = Math.sin(this.animTime + i * 0.28) * Math.cos(this.animTime * 0.5 + i * 0.15);
+      const normalizedWave = (wave + 1) * 0.5;
+      const barH = Math.max(2, normalizedWave * (h - 2) * this.energy * speedFactor);
+      const y = h - barH;
+
+      this.ctx.beginPath();
+      if (this.ctx.roundRect) {
+        this.ctx.roundRect(x, y, barWidth, barH, [1, 1, 0, 0]);
+      } else {
+        this.ctx.rect(x, y, barWidth, barH);
+      }
+      this.ctx.fill();
+    }
+
+    this.rafId = requestAnimationFrame(this.render);
+  }
+
+  destroy() {
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    if (this.onResize) window.removeEventListener('resize', this.onResize);
+    if (this.onVisibilityChange) document.removeEventListener('visibilitychange', this.onVisibilityChange);
+  }
+}
 
 // ============================================================================
 // 5. TYPING ENGINE (REFACTORED WITH PRECISION CARET TRACKING & KEY ANALYTICS)
@@ -1572,14 +3028,22 @@ class TypingEngine {
     this.onComplete = options.onComplete || (() => {});
     this.onChunkComplete = options.onChunkComplete || null;
     this.onPauseStateChange = options.onPauseStateChange || (() => {});
+    this.onTypingStateChange = options.onTypingStateChange || (() => {});
+    this.onKeystroke = options.onKeystroke || null;
+    this.onTargetCharChange = options.onTargetCharChange || null;
+    this._caretRaf = null;
 
     // Practice Mode: 'paragraph' (default), 'timed', or 'drill'
     this.mode = options.mode || 'paragraph';
     this.timeLimit = options.timeLimit || 60; // in seconds for timed mode
+    this.isCodeMode = options.isCodeMode || (options.mode === 'code');
+    this.smartIndent = options.smartIndent !== undefined ? options.smartIndent : this.isCodeMode;
+    this.onLineChange = options.onLineChange || null;
 
     // Target text and flat list of character spans
     this.targetText = '';
     this.charSpans = [];
+    this.charElements = this.charSpans;
     this.activeCharIndex = 0;
 
     // Accurate Active Typing & Idle Pause Engine
@@ -1593,16 +3057,28 @@ class TypingEngine {
     this.cumulativeCorrectChars = 0;
     this.instantaneousSamples = [];
 
-    // Metrics State
+    // Metrics & Combo State
     this.totalKeystrokes = 0;
     this.correctKeystrokes = 0;
     this.currentChunkCorrectChars = 0;
     this.errorCount = 0;
+    this.comboStreak = 0;
+    this.maxComboStreak = 0;
+    this.currentWpm = 0;
     this.isCompleted = false;
     this.isModalOpen = false;
     this.sessionKeyStats = {};
+    this.prevActiveSpan = null;
 
     this.bindEvents();
+  }
+
+  get charElements() {
+    return this.charSpans;
+  }
+
+  set charElements(val) {
+    this.charSpans = val || [];
   }
 
   recordSessionKey(rawChar, isCorrect) {
@@ -1635,11 +3111,17 @@ class TypingEngine {
     window.addEventListener('resize', () => this.updateCaretPosition());
   }
 
+  getTargetChar() {
+    if (!this.targetText || this.activeCharIndex >= this.targetText.length) return null;
+    return this.targetText[this.activeCharIndex];
+  }
+
   loadChunk(chunkText) {
     this.reset();
     this.targetText = chunkText.trim();
     this.renderDOM();
     this.updateMetrics();
+    this.onTargetCharChange?.(this.getTargetChar());
     requestAnimationFrame(() => {
       this.updateCaretPosition();
     });
@@ -1662,6 +3144,7 @@ class TypingEngine {
       this.updateCaretPosition();
     });
     this.updateMetrics();
+    this.onTargetCharChange?.(this.getTargetChar());
   }
 
   reset() {
@@ -1685,25 +3168,52 @@ class TypingEngine {
     this.instantaneousSamples = [];
     this.activeCharIndex = 0;
     this.charSpans = [];
+    this.charElements = this.charSpans;
     this.totalKeystrokes = 0;
     this.correctKeystrokes = 0;
     this.currentChunkCorrectChars = 0;
     this.errorCount = 0;
+    this.comboStreak = 0;
     this.isCompleted = false;
     this.isModalOpen = false;
+    if (this.prevActiveSpan) {
+      this.prevActiveSpan.classList.remove('char-current');
+      this.prevActiveSpan = null;
+    }
     if (this.hiddenInput) {
       this.hiddenInput.value = '';
     }
     this.onPauseStateChange(false);
+    this.onTypingStateChange(false);
     if (this.caret) {
       this.caret.classList.remove('typing');
     }
+  }
+
+  getSyntaxClass(token) {
+    if (!token) return '';
+    const clean = token.replace(/^[^\w]+|[^\w]+$/g, '');
+    const keywords = new Set([
+      'def', 'class', 'import', 'from', 'return', 'if', 'else', 'elif', 'for', 'while',
+      'try', 'except', 'const', 'let', 'var', 'function', 'async', 'await', 'new',
+      'SELECT', 'FROM', 'WHERE', 'GROUP', 'BY', 'HAVING', 'ORDER', 'JOIN', 'LEFT', 'INNER',
+      'WITH', 'AS', 'OVER', 'PARTITION', 'set', 'echo', 'grep', 'awk', 'find',
+      'int', 'void', 'bool', 'std', 'vector', 'string', 'header', 'style', 'nav', 'div',
+      'public', 'private', 'explicit', 'template', 'typename'
+    ]);
+    if (keywords.has(clean) || keywords.has(token)) return 'syntax-keyword';
+    if (/^\d+(\.\d+)?$/.test(clean || token)) return 'syntax-number';
+    if (token.startsWith('"') || token.startsWith("'") || token.endsWith('"') || token.endsWith("'")) return 'syntax-string';
+    if (token.startsWith('#') || token.startsWith('//') || token.startsWith('--')) return 'syntax-comment';
+    if (/^[{}[\]()=>!&|;:+\-*/%^<>,.]+$/.test(token)) return 'syntax-symbol';
+    return '';
   }
 
   /**
    * Renders target text with 1 span per character (and space).
    * Words are grouped into <span class="word"> with NO position:relative
    * so offsetLeft and offsetTop are relative to wordsContainer.
+   * Pre-caches all character spans into this.charElements for 0-lookup typing.
    */
   renderDOM() {
     if (!this.wordsContainer) return;
@@ -1713,6 +3223,7 @@ class TypingEngine {
     }
 
     this.charSpans = [];
+    this.charElements = this.charSpans;
     this.currentChunkCorrectChars = 0;
 
     const lines = this.targetText.split('\n');
@@ -1747,9 +3258,13 @@ class TypingEngine {
           }
           const wordSpan = document.createElement('span');
           wordSpan.className = 'word';
+          const syntaxCls = (this.isCodeMode || this.mode === 'code') ? this.getSyntaxClass(wordChars) : '';
           for (let j = 0; j < wordChars.length; j++) {
             const charSpan = document.createElement('span');
-            charSpan.className = 'char untyped';
+            charSpan.className = syntaxCls ? `char untyped ${syntaxCls}` : 'char untyped';
+            if (syntaxCls) {
+              charSpan.dataset.syntax = syntaxCls;
+            }
             charSpan.textContent = wordChars[j];
             charSpan.dataset.charIndex = this.charSpans.length;
             wordSpan.appendChild(charSpan);
@@ -1789,6 +3304,7 @@ class TypingEngine {
       }, 2000);
     }
 
+    this.onTypingStateChange(true);
     // 2. If resuming from idle pause, clear paused state immediately
     if (this.isPaused) {
       this.isPaused = false;
@@ -1818,6 +3334,7 @@ class TypingEngine {
     }
     this.isPaused = true;
     this.onPauseStateChange(true);
+    this.onTypingStateChange(false);
     this.updateMetrics();
   }
 
@@ -1840,8 +3357,13 @@ class TypingEngine {
   handleKeyDown(e) {
     if (this.isCompleted || this.isModalOpen || !this.targetText || this.targetText.length === 0) return;
 
-    // Allow browser shortcuts
-    if (['Tab', 'Escape', 'F5', 'F12', 'Alt', 'Control', 'Meta'].includes(e.key)) {
+    // Ignore browser modifier combinations (Ctrl+C, Ctrl+V, Alt+Tab, Cmd+R, etc.)
+    if (e.ctrlKey || e.altKey || e.metaKey) {
+      return;
+    }
+
+    // Ignore browser navigation and non-typing control keys
+    if (['Escape', 'Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'PageUp', 'PageDown', 'Home', 'End', 'Insert', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'].includes(e.key)) {
       return;
     }
 
@@ -1853,24 +3375,50 @@ class TypingEngine {
       const targetChar = this.targetText[this.activeCharIndex];
       if (targetChar === '\n') {
         this.processChar('\n');
+        // Smart Enter Indent: automatically skip leading indentation spaces on the next line
+        if (this.smartIndent || this.isCodeMode || this.mode === 'code') {
+          while (
+            this.activeCharIndex < this.targetText.length &&
+            (this.targetText[this.activeCharIndex] === ' ' || this.targetText[this.activeCharIndex] === '\t')
+          ) {
+            const indentSpan = this.charElements[this.activeCharIndex];
+            if (indentSpan && indentSpan.classList) {
+              indentSpan.className = 'char correct char-space';
+            }
+            this.correctKeystrokes++;
+            this.currentChunkCorrectChars++;
+            this.activeCharIndex++;
+          }
+          this.updateCaretPosition();
+          this.updateMetrics();
+          if (this.activeCharIndex >= this.targetText.length) {
+            if (this.mode === 'timed') {
+              if (typeof this.onChunkComplete === 'function') this.onChunkComplete();
+            } else {
+              this.finishTest();
+            }
+          }
+        }
       } else {
-        this.processChar(targetChar || ' ');
+        // Critical Fix: Pressing Enter mid-line before reaching \n treats it as a
+        // single-character error and NEVER skips the rest of the current line.
+        this.processChar('\n');
       }
       return;
     }
 
     // Handle Tab in code or custom mode (indentation helper)
     if (e.key === 'Tab') {
-      if (this.mode === 'code' || this.mode === 'custom') {
+      if (this.mode === 'code' || this.mode === 'custom' || this.isCodeMode) {
         e.preventDefault();
         if (this.targetText[this.activeCharIndex] === ' ') {
           this.processChar(' ');
           if (this.targetText[this.activeCharIndex] === ' ') {
             this.processChar(' ');
           }
-          return;
         }
       }
+      return;
     }
 
     // Handle Backspace
@@ -1887,7 +3435,7 @@ class TypingEngine {
       return;
     }
 
-    // Ignore non-printable keys
+    // Ignore any multi-character control keys (ArrowLeft, ArrowUp, etc.)
     if (e.key.length !== 1) return;
 
     // Handle single printable character
@@ -1919,109 +3467,39 @@ class TypingEngine {
     if (this.isCompleted || this.isModalOpen || !this.targetText || this.targetText.length === 0) return;
     if (this.activeCharIndex > 0) {
       this.activeCharIndex--;
-      const span = this.charSpans[this.activeCharIndex];
-      if (span) {
+      const span = this.charElements ? this.charElements[this.activeCharIndex] : null;
+      if (span && span.classList) {
         if (span.classList.contains('correct')) {
           this.currentChunkCorrectChars = Math.max(0, this.currentChunkCorrectChars - 1);
         }
         const isSpace = span.classList.contains('char-space');
         const isNewline = span.classList.contains('char-newline');
+        const syntaxCls = span.dataset?.syntax || '';
         if (isSpace) {
           span.className = 'char untyped char-space';
         } else if (isNewline) {
           span.className = 'char untyped char-newline';
+        } else if (syntaxCls) {
+          span.className = `char untyped ${syntaxCls}`;
         } else {
           span.className = 'char untyped';
         }
       }
-      SoundService.playKeystroke('backspace', false);
+      SoundService?.playKeystroke?.('backspace', false);
       this.updateCaretPosition();
       this.updateMetrics();
+      this.onKeystroke?.({ char: 'Backspace', isCorrect: true, combo: this.comboStreak });
+      this.onTargetCharChange?.(this.getTargetChar());
     }
   }
 
   handleSpace() {
-    if (this.isCompleted || this.isModalOpen || !this.targetText || this.targetText.length === 0) return;
-    if (this.currentIndex >= this.targetText.length) {
-      if (this.mode === 'timed') {
-        if (typeof this.onChunkComplete === 'function') {
-          this.onChunkComplete();
-        }
-      } else {
-        this.finishTest();
-      }
-      return;
-    }
-
-    const targetChar = this.targetText[this.activeCharIndex];
-
-    // Case 1: Target character is a space
-    if (targetChar === ' ') {
-      this.totalKeystrokes++;
-      this.correctKeystrokes++;
-      this.currentChunkCorrectChars++;
-      const span = this.charSpans[this.activeCharIndex];
-      if (span) {
-        span.className = 'char correct char-space';
-      }
-      SoundService.playKeystroke('space', false);
-      this.recordSessionKey(' ', true);
-      this.activeCharIndex++;
-      this.updateCaretPosition();
-      this.updateMetrics();
-      if (this.targetText && this.targetText.length > 0 && this.currentIndex >= this.targetText.length) {
-        if (this.mode === 'timed') {
-          if (typeof this.onChunkComplete === 'function') {
-            this.onChunkComplete();
-          }
-        } else {
-          this.finishTest();
-        }
-      }
-      return;
-    }
-
-    // Case 2: User pressed space inside a word to skip to next word
-    const nextSpaceIdx = this.targetText.indexOf(' ', this.activeCharIndex);
-    if (nextSpaceIdx !== -1) {
-      this.totalKeystrokes++;
-      for (let i = this.activeCharIndex; i <= nextSpaceIdx; i++) {
-        const span = this.charSpans[i];
-        if (span) {
-          const isSpace = span.classList.contains('char-space');
-          const isNewline = span.classList.contains('char-newline');
-          if (isSpace) {
-            span.className = 'char incorrect char-space';
-          } else if (isNewline) {
-            span.className = 'char incorrect char-newline';
-          } else {
-            span.className = 'char incorrect';
-          }
-        }
-        this.errorCount++;
-        this.recordSessionKey(this.targetText[i], false);
-      }
-      SoundService.playKeystroke('space', true);
-      this.activeCharIndex = nextSpaceIdx + 1;
-      this.updateCaretPosition();
-      this.updateMetrics();
-      if (this.targetText && this.targetText.length > 0 && this.currentIndex >= this.targetText.length) {
-        if (this.mode === 'timed') {
-          if (typeof this.onChunkComplete === 'function') {
-            this.onChunkComplete();
-          }
-        } else {
-          this.finishTest();
-        }
-      }
-    } else {
-      this.processChar(' ');
-    }
+    this.processChar(' ');
   }
 
   processChar(typedChar) {
     if (this.isCompleted || this.isModalOpen || !this.targetText || this.targetText.length === 0) return;
-    if (this.currentIndex >= this.targetText.length) {
+    if (this.activeCharIndex >= this.targetText.length) {
       if (this.mode === 'timed') {
         if (typeof this.onChunkComplete === 'function') {
           this.onChunkComplete();
@@ -2033,9 +3511,9 @@ class TypingEngine {
     }
 
     const targetChar = this.targetText[this.activeCharIndex];
-    const span = this.charSpans[this.activeCharIndex];
-    const isSpace = span?.classList.contains('char-space');
-    const isNewline = span?.classList.contains('char-newline');
+    const span = this.charElements ? this.charElements[this.activeCharIndex] : null;
+    const isSpace = span?.classList ? span.classList.contains('char-space') : false;
+    const isNewline = span?.classList ? span.classList.contains('char-newline') : false;
 
     this.totalKeystrokes++;
     const isMatch = (typedChar === targetChar);
@@ -2053,7 +3531,11 @@ class TypingEngine {
     if (isMatch) {
       this.correctKeystrokes++;
       this.currentChunkCorrectChars++;
-      if (span) {
+      this.comboStreak = (this.comboStreak || 0) + 1;
+      if (this.comboStreak > (this.maxComboStreak || 0)) {
+        this.maxComboStreak = this.comboStreak;
+      }
+      if (span && span.classList) {
         if (isSpace) {
           span.className = 'char correct char-space';
         } else if (isNewline) {
@@ -2062,11 +3544,12 @@ class TypingEngine {
           span.className = 'char correct';
         }
       }
-      SoundService.playKeystroke(keyType, false);
+      SoundService?.playKeystroke?.(keyType, false);
       this.recordSessionKey(targetChar, true);
     } else {
       this.errorCount++;
-      if (span) {
+      this.comboStreak = 0;
+      if (span && span.classList) {
         if (isSpace) {
           span.className = 'char incorrect char-space';
         } else if (isNewline) {
@@ -2075,15 +3558,17 @@ class TypingEngine {
           span.className = 'char incorrect';
         }
       }
-      SoundService.playKeystroke(keyType, true);
+      SoundService?.playKeystroke?.(keyType, true);
       this.recordSessionKey(targetChar, false);
     }
 
+    this.onKeystroke?.({ char: typedChar, targetChar, isCorrect: isMatch, combo: this.comboStreak });
     this.activeCharIndex++;
     this.updateCaretPosition();
     this.updateMetrics();
+    this.onTargetCharChange?.(this.getTargetChar());
 
-    if (this.targetText && this.targetText.length > 0 && this.currentIndex >= this.targetText.length) {
+    if (this.targetText && this.targetText.length > 0 && this.activeCharIndex >= this.targetText.length) {
       if (this.mode === 'timed') {
         if (typeof this.onChunkComplete === 'function') {
           this.onChunkComplete();
@@ -2095,37 +3580,55 @@ class TypingEngine {
   }
 
   /**
-   * Translates the sharp glowing vertical I-beam caret (2px wide).
-   * Positioned cleanly before the active character with NO letter covering.
-   * Tracks seamlessly across word wraps and window resizing.
+   * Translates the high-visibility animated vertical I-beam caret (2.5px wide).
+   * Features glowing accent color, hardware-accelerated translate3d, plus subtle
+   * translucent highlight box on the current character.
    */
   updateCaretPosition() {
     if (!this.caret || !this.wordsContainer) return;
 
     this.caret.classList.add('typing');
 
-    if (this.activeCharIndex < this.charSpans.length) {
-      const activeSpan = this.charSpans[this.activeCharIndex];
+    // Remove previous character highlight box
+    if (this.prevActiveSpan && this.prevActiveSpan !== this.charElements[this.activeCharIndex]) {
+      this.prevActiveSpan.classList.remove('char-current');
+      this.prevActiveSpan = null;
+    }
+
+    if (this.activeCharIndex < this.charElements.length) {
+      const activeSpan = this.charElements[this.activeCharIndex];
       if (activeSpan) {
+        activeSpan.classList.add('char-current');
+        this.prevActiveSpan = activeSpan;
+
         const left = activeSpan.offsetLeft;
         const top = activeSpan.offsetTop;
         const h = activeSpan.offsetHeight || 26;
-        this.caret.style.width = '2px';
+        this.caret.style.width = '2.5px';
         this.caret.style.height = `${h}px`;
-        this.caret.style.transform = `translate(${left}px, ${top}px)`;
+        this.caret.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+        if (typeof activeSpan.scrollIntoView === 'function') {
+          activeSpan.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
       }
-    } else if (this.charSpans.length > 0) {
-      const lastSpan = this.charSpans[this.charSpans.length - 1];
+    } else if (this.charElements.length > 0) {
+      const lastSpan = this.charElements[this.charElements.length - 1];
       if (lastSpan) {
         const left = lastSpan.offsetLeft + lastSpan.offsetWidth;
         const top = lastSpan.offsetTop;
         const h = lastSpan.offsetHeight || 26;
-        this.caret.style.width = '2px';
+        this.caret.style.width = '2.5px';
         this.caret.style.height = `${h}px`;
-        this.caret.style.transform = `translate(${left}px, ${top}px)`;
+        this.caret.style.transform = `translate3d(${left}px, ${top}px, 0)`;
       }
     } else {
-      this.caret.style.transform = `translate(0px, 0px)`;
+      this.caret.style.transform = 'translate3d(0px, 0px, 0)';
+    }
+
+    if (typeof this.onLineChange === 'function' && this.targetText) {
+      const typedBefore = this.targetText.substring(0, this.activeCharIndex);
+      const currentLine = (typedBefore.match(/\n/g) || []).length + 1;
+      this.onLineChange(currentLine);
     }
   }
 
@@ -2163,6 +3666,8 @@ class TypingEngine {
       ? Math.min(100, Math.round((this.activeCharIndex / totalTargetChars) * 100)) 
       : 0;
 
+    this.currentWpm = Math.max(0, wpm);
+
     return {
       wpm: Math.max(0, wpm),
       rawWpm: Math.max(0, rawWpm),
@@ -2176,6 +3681,8 @@ class TypingEngine {
       totalTargetChars,
       totalKeystrokes: this.totalKeystrokes,
       errorCount: this.errorCount,
+      combo: this.comboStreak || 0,
+      maxCombo: this.maxComboStreak || 0,
       progressPercent,
       samples: [...this.instantaneousSamples]
     };
@@ -2319,7 +3826,7 @@ class HeaderController {
     this.soundToggleBtn.classList.toggle('muted', !enabled);
     const iconSpan = this.soundToggleBtn.querySelector('.btn-icon');
     const labelSpan = this.soundToggleBtn.querySelector('.btn-label');
-    if (iconSpan) iconSpan.textContent = enabled ? '🔊' : '🔇';
+    if (iconSpan) iconSpan.innerHTML = enabled ? getVectorIcon('volume_on') : getVectorIcon('volume_off');
     if (labelSpan) labelSpan.textContent = enabled ? 'Sound: On' : 'Sound: Off';
   }
 
@@ -2393,9 +3900,9 @@ class HomePageController {
     try {
       const pb = localStorage.getItem('topictyper_pb_wpm');
       const streak = localStorage.getItem('topictyper_daily_streak');
-      if (pb && this.homePbText) {
-        const pbVal = Math.round(parseFloat(pb));
-        if (pbVal > 0) this.homePbText.textContent = `PB: ${pbVal} WPM`;
+      if (this.homePbText) {
+        const pbVal = pb ? Math.round(parseFloat(pb)) : 0;
+        this.homePbText.textContent = `${pbVal} WPM`;
       }
       if (streak && this.homeStreakText) {
         this.homeStreakText.textContent = `${streak} Day Streak`;
@@ -2406,7 +3913,7 @@ class HomePageController {
   updatePBAndStreak(pbWpm, dailyStreak) {
     const pbVal = Math.round(pbWpm || 0);
     if (this.homePbText) {
-      this.homePbText.textContent = pbVal > 0 ? `PB: ${pbVal} WPM` : 'PB: -- WPM';
+      this.homePbText.textContent = `${pbVal} WPM`;
     }
     if (this.homeStreakText) {
       const streak = dailyStreak || 0;
@@ -2456,10 +3963,12 @@ class HomePageController {
     this.homePbText = document.getElementById('home-pb-text');
     this.homeStreakText = document.getElementById('home-streak-text');
 
-    // Source Tabs (Wikipedia vs Custom / Code)
+    // Source Tabs (Wikipedia vs Specialized Drills vs Custom / Code)
     this.tabSourceWiki = document.getElementById('tab-source-wiki');
+    this.tabSourceDrills = document.getElementById('tab-source-drills');
     this.tabSourceCustom = document.getElementById('tab-source-custom');
     this.panelSourceWiki = document.getElementById('panel-source-wiki');
+    this.panelSourceDrills = document.getElementById('panel-source-drills');
     this.panelSourceCustom = document.getElementById('panel-source-custom');
 
     // Custom Subtabs (Paste Text vs Code Snippets)
@@ -2500,11 +4009,30 @@ class HomePageController {
    * Randomly shuffles the 40+ topic pool and picks 7 fresh topics on every page load/refresh,
    * rendered alongside the 8th "Surprise Me (Random)" card with ZERO default pre-selection.
    */
-  renderDynamicTopicCards() {
+  showGuestLockModal(featureName) {
+    const modal = document.getElementById('guest-lock-modal');
+    if (!modal) return;
+    const descEl = document.getElementById('lock-modal-desc');
+    if (descEl && featureName) {
+      descEl.textContent = `${featureName} is reserved for registered members. Sign in or create a free account to track your progress and unlock customized drills.`;
+    }
+    modal.classList.remove('hidden');
+  }
+
+  async renderDynamicTopicCards() {
     if (!this.curatedTopicGrid) return;
 
+    // Attempt to load live catalog from backend REST endpoint
+    let pool = WikipediaService.curatedTopics || CURATED_TOPICS_POOL;
+    try {
+      const backendTopics = await WikipediaService.fetchCatalog();
+      if (backendTopics && backendTopics.length > 0) {
+        pool = backendTopics;
+      }
+    } catch (e) {}
+
     // Fisher-Yates shuffle on curated pool
-    const poolCopy = [...CURATED_TOPICS_POOL];
+    const poolCopy = [...pool];
     for (let i = poolCopy.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [poolCopy[i], poolCopy[j]] = [poolCopy[j], poolCopy[i]];
@@ -2512,20 +4040,59 @@ class HomePageController {
 
     const selected7 = poolCopy.slice(0, 7);
 
-    // Build markup with NO pre-selected class on any card
-    const cardsHtml = selected7.map(item => `
-      <div class="topic-card" data-topic="${item.title}" title="${item.title}">
-        <span class="topic-card-icon">${item.icon}</span>
+    // Build elevated visual cards with category accent strip, geometric SVG pattern, and estimated time badge
+    const cardsHtml = selected7.map((item, idx) => {
+      const cat = item.category || 'Topic';
+      const catSlug = cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      return `
+      <div class="topic-card category-${catSlug}" data-topic="${item.title}" data-category="${cat}" title="${item.title}">
+        <div class="topic-card-accent-strip"></div>
+        <div class="topic-card-pattern" aria-hidden="true">
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="card-geo-dyn-${idx}" width="22" height="22" patternUnits="userSpaceOnUse">
+                <circle cx="2" cy="2" r="1" fill="currentColor" opacity="0.08"/>
+                <path d="M0 22L22 0M11 22L22 11M0 11L11 0" stroke="currentColor" stroke-width="0.5" stroke-dasharray="2 2" opacity="0.04"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#card-geo-dyn-${idx})" />
+          </svg>
+        </div>
+        <div class="topic-card-header">
+          <span class="topic-card-icon">${getVectorIcon(item.icon || 'book')}</span>
+          <span class="topic-time-badge" title="Estimated reading and typing duration">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>~45s</span>
+          </span>
+        </div>
         <div class="topic-card-body">
-          <span class="topic-card-title">${item.displayTitle}</span>
-          <span class="topic-card-tag">${item.category}</span>
+          <span class="topic-card-title">${item.displayTitle || item.title}</span>
+          <span class="topic-card-tag">${cat}</span>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     const surpriseCardHtml = `
-      <div class="topic-card" data-topic="random" title="Surprise Me (Random Topic)">
-        <span class="topic-card-icon">🎲</span>
+      <div class="topic-card topic-card-random category-random" data-topic="random" title="Surprise Me (Random Topic)">
+        <div class="topic-card-accent-strip"></div>
+        <div class="topic-card-pattern" aria-hidden="true">
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="card-geo-dyn-rand" width="22" height="22" patternUnits="userSpaceOnUse">
+                <circle cx="5" cy="5" r="1.5" fill="currentColor" opacity="0.08"/>
+                <circle cx="16" cy="16" r="1.5" fill="currentColor" opacity="0.08"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#card-geo-dyn-rand)" />
+          </svg>
+        </div>
+        <div class="topic-card-header">
+          <span class="topic-card-icon">${getVectorIcon('dice')}</span>
+          <span class="topic-time-badge badge-surprise" title="Random topic selection">
+            <span>✦ Surprise</span>
+          </span>
+        </div>
         <div class="topic-card-body">
           <span class="topic-card-title">Surprise Me</span>
           <span class="topic-card-tag">Random</span>
@@ -2665,36 +4232,98 @@ class HomePageController {
       });
     }
 
-    // Content Source Tabs (Wikipedia Topics vs Custom / Code)
-    if (this.tabSourceWiki && this.tabSourceCustom) {
-      this.tabSourceWiki.addEventListener('click', () => {
-        SoundService.playUITick();
-        this.tabSourceWiki.classList.add('active');
-        this.tabSourceWiki.setAttribute('aria-selected', 'true');
-        this.tabSourceCustom.classList.remove('active');
-        this.tabSourceCustom.setAttribute('aria-selected', 'false');
-        this.panelSourceWiki?.classList.remove('hidden');
-        this.panelSourceCustom?.classList.add('hidden');
+    // Content Source Tabs (Wikipedia Topics vs Specialized Drills vs Custom / Code)
+    const switchSourceTab = (activeTab, activePanel) => {
+      SoundService.playUITick();
+      [this.tabSourceWiki, this.tabSourceDrills, this.tabSourceCustom].forEach(t => {
+        if (t) {
+          t.classList.toggle('active', t === activeTab);
+          t.setAttribute('aria-selected', t === activeTab ? 'true' : 'false');
+        }
+      });
+      [this.panelSourceWiki, this.panelSourceDrills, this.panelSourceCustom].forEach(p => {
+        if (p) {
+          p.classList.toggle('hidden', p !== activePanel);
+        }
       });
 
-      this.tabSourceCustom.addEventListener('click', () => {
-        SoundService.playUITick();
-        this.tabSourceCustom.classList.add('active');
-        this.tabSourceCustom.setAttribute('aria-selected', 'true');
-        this.tabSourceWiki.classList.remove('active');
-        this.tabSourceWiki.setAttribute('aria-selected', 'false');
-        this.panelSourceCustom?.classList.remove('hidden');
-        this.panelSourceWiki?.classList.add('hidden');
-
-        // Clear topic card highlight and prompt when switching away
+      if (activeTab === this.tabSourceCustom) {
         this.topicCards.forEach(c => c.classList.remove('selected'));
         this.selectedTopic = null;
         this.clearTopicPrompt();
         this.updateStartUrl();
-
         this.renderCodeSnippetsUI();
+      }
+    };
+
+    const isAuth = document.documentElement.getAttribute('data-authenticated') === 'true';
+
+    if (this.tabSourceWiki) {
+      this.tabSourceWiki.addEventListener('click', () => switchSourceTab(this.tabSourceWiki, this.panelSourceWiki));
+    }
+    if (this.tabSourceDrills) {
+      this.tabSourceDrills.addEventListener('click', () => {
+        if (!isAuth) {
+          this.showGuestLockModal('Specialized Drills');
+          return;
+        }
+        switchSourceTab(this.tabSourceDrills, this.panelSourceDrills);
       });
     }
+    if (this.tabSourceCustom) {
+      this.tabSourceCustom.addEventListener('click', () => {
+        if (!isAuth) {
+          this.showGuestLockModal('Custom Text & Code Arena');
+          return;
+        }
+        switchSourceTab(this.tabSourceCustom, this.panelSourceCustom);
+      });
+    }
+
+    if (this.practiceWeakKeysTopBtn) {
+      this.practiceWeakKeysTopBtn.addEventListener('click', (e) => {
+        if (!isAuth) {
+          e.preventDefault();
+          this.showGuestLockModal('Weak Keys Drill');
+          return;
+        }
+      });
+    }
+
+    if (this.practiceWeakKeysBtn) {
+      this.practiceWeakKeysBtn.addEventListener('click', (e) => {
+        if (!isAuth) {
+          e.preventDefault();
+          this.showGuestLockModal('Weak Keys Drill');
+          return;
+        }
+      });
+    }
+
+    // Specialized Drills Launch Triggers
+    const drillActionBtns = document.querySelectorAll('.drill-launch-action');
+    drillActionBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!isAuth) {
+          this.showGuestLockModal('Specialized Drills');
+          return;
+        }
+        const idx = parseInt(btn.dataset.drillIndex, 10);
+        this.launchSpecializedDrill(idx);
+      });
+    });
+
+    const recDrillBtns = document.querySelectorAll('.drill-launch-trigger');
+    recDrillBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!isAuth) {
+          this.showGuestLockModal('Specialized Drills');
+          return;
+        }
+        const drillId = btn.dataset.drillId;
+        this.launchSpecializedDrill(drillId);
+      });
+    });
 
     // Custom Subtabs (Paste Text vs Code Snippets)
     if (this.subtabBtnText && this.subtabBtnCode) {
@@ -2811,6 +4440,23 @@ class HomePageController {
     }
   }
 
+  launchSpecializedDrill(target) {
+    let drill = null;
+    if (typeof target === 'number') {
+      drill = SPECIALIZED_DRILLS[target];
+    } else {
+      drill = SPECIALIZED_DRILLS.find(d => d.id === target) || SPECIALIZED_DRILLS[0];
+    }
+    if (!drill) return;
+    try {
+      sessionStorage.setItem('typer_custom_text', drill.text);
+      sessionStorage.setItem('typer_custom_title', drill.title);
+      sessionStorage.setItem('typer_custom_desc', drill.description);
+      sessionStorage.setItem('typer_mode', 'drill');
+    } catch (err) {}
+    window.location.href = '/practice/?mode=drill';
+  }
+
   renderCodeSnippetsUI() {
     const snippets = CodeSnippets[this.activeCodeLang] || CodeSnippets.python;
     if (this.snippetChipsContainer) {
@@ -2832,7 +4478,7 @@ class HomePageController {
     const currentSnippet = snippets[this.activeSnippetIdx] || snippets[0];
     if (currentSnippet) {
       if (this.codeFileTitle) this.codeFileTitle.textContent = currentSnippet.filename;
-      if (this.codeLangIcon) this.codeLangIcon.textContent = currentSnippet.icon || '💻';
+      if (this.codeLangIcon) this.codeLangIcon.innerHTML = getVectorIcon(currentSnippet.icon || currentSnippet.lang || 'code');
       if (this.codePreviewContent) this.codePreviewContent.textContent = currentSnippet.code;
     }
   }
@@ -2924,6 +4570,39 @@ class HomePageController {
     this.quickWeakChips.innerHTML = keys.slice(0, 3).map(c => `<span class="chip-key">${c}</span>`).join('');
   }
 
+  formatJournalTimestamp(ts) {
+    if (!ts) return 'Recent';
+    let dateObj = null;
+    if (typeof ts === 'number') {
+      dateObj = new Date(ts);
+    } else if (typeof ts === 'string') {
+      if (/^\d{10,}$/.test(ts.trim())) {
+        dateObj = new Date(parseInt(ts.trim(), 10));
+      } else {
+        dateObj = new Date(ts);
+      }
+    }
+    if (!dateObj || isNaN(dateObj.getTime())) {
+      return String(ts);
+    }
+
+    const now = new Date();
+    const isToday = now.toDateString() === dateObj.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = yesterday.toDateString() === dateObj.toDateString();
+
+    const timeStr = dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+    if (isToday) {
+      return `Today, ${timeStr}`;
+    } else if (isYesterday) {
+      return `Yesterday, ${timeStr}`;
+    } else {
+      const monthStr = dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      return `${monthStr}, ${timeStr}`;
+    }
+  }
+
   renderSessionLogs() {
     if (!this.sessionLogsList) return;
     if (this.sessionLogCount) {
@@ -2932,7 +4611,7 @@ class HomePageController {
     if (this.sessionLogs.length === 0) {
       this.sessionLogsList.innerHTML = `
         <div class="empty-log-state">
-          <span>📜</span>
+          <span>${getVectorIcon('book')}</span>
           <p>No practice logs yet. Complete a paragraph or sprint to log your results!</p>
         </div>
       `;
@@ -2941,20 +4620,81 @@ class HomePageController {
 
     this.sessionLogsList.innerHTML = '';
     const recentLogs = [...this.sessionLogs].reverse().slice(0, 10);
+    const escapeText = (str) => {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    };
+
     recentLogs.forEach(log => {
       const row = document.createElement('div');
-      row.className = 'session-log-item';
+      row.className = 'session-log-card';
+
+      const modeLabels = {
+        timed: 'Timed Sprint',
+        code: 'Code Snippet',
+        custom: 'Custom Text',
+        drill: 'Specialized Drill',
+        paragraph: 'Paragraph'
+      };
+      const modeKey = log.mode || 'paragraph';
+      const modeBadge = modeLabels[modeKey] || 'Paragraph';
+      const formattedDate = this.formatJournalTimestamp(log.timestamp || log.date);
+      const acc = Math.round(log.accuracy !== undefined ? log.accuracy : 100);
+      const errCount = log.errors !== undefined ? log.errors : (log.errors_count || 0);
+      const wpmVal = Math.round(log.wpm || 0);
+      const topicTitle = log.topic || log.topic_title || 'Practice Session';
+
       row.innerHTML = `
-        <div class="log-info">
-          <span class="log-topic">${log.topic || 'Random Topic'}</span>
-          <span class="log-mode">${log.mode === 'timed' ? '⏱️ Timed' : (log.mode === 'code' ? '💻 Code' : (log.mode === 'custom' ? '📝 Custom' : '📖 Paragraph'))}</span>
-          <span class="log-timestamp">${log.timestamp || ''}</span>
+        <div class="log-col-left">
+          <div class="log-title-row">
+            <span class="log-topic-title" title="${escapeText(topicTitle)}">${escapeText(topicTitle)}</span>
+            <span class="log-mode-tag mode-${modeKey}">${modeBadge}</span>
+          </div>
+          <span class="log-timestamp"><span class="log-clock-icon" aria-hidden="true">${getVectorIcon('clock')}</span> ${formattedDate}</span>
         </div>
-        <div class="log-stats">
-          <span class="log-stat-wpm">${log.wpm} <span class="stat-unit-tiny">WPM</span></span>
-          <span class="log-stat-acc">${log.accuracy}% <span class="stat-unit-tiny">Acc</span></span>
+        <div class="log-col-center">
+          <div class="log-acc-container">
+            <div class="log-acc-text-row">
+              <span class="log-acc-title">Accuracy</span>
+              <span class="log-acc-percent color-emerald">${acc}%</span>
+            </div>
+            <div class="log-acc-track" aria-hidden="true">
+              <div class="log-acc-fill" style="width: ${acc}%;"></div>
+            </div>
+          </div>
+          <span class="log-error-pill ${errCount === 0 ? 'zero-err' : 'has-err'}">
+            ${errCount} ${errCount === 1 ? 'error' : 'errors'}
+          </span>
+        </div>
+        <div class="log-col-right">
+          <div class="log-wpm-pill">
+            <span class="log-wpm-number">${wpmVal}</span>
+            <span class="log-wpm-unit">WPM</span>
+          </div>
+          <button type="button" class="btn-log-retry" title="Retry this practice topic">
+            <span>Retry ↻</span>
+          </button>
         </div>
       `;
+
+      const retryBtn = row.querySelector('.btn-log-retry');
+      if (retryBtn) {
+        retryBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (window.SoundService) window.SoundService.playUITick();
+          if (modeKey === 'code') {
+            window.location.href = '/code/';
+          } else {
+            window.location.href = `/practice/?topic=${encodeURIComponent(topicTitle)}&mode=${encodeURIComponent(modeKey)}`;
+          }
+        });
+      }
+
       this.sessionLogsList.appendChild(row);
     });
   }
@@ -3009,7 +4749,7 @@ class PracticePageController {
         this.arenaModePill.textContent = 'Custom Text';
       } else if (this.mode === 'code') {
         const lang = (this.urlParams.get('lang') || 'Code').toUpperCase();
-        this.arenaModePill.textContent = `💻 ${lang} Snippet`;
+        this.arenaModePill.textContent = `${lang} Snippet`;
       } else {
         this.arenaModePill.textContent = 'Complete Paragraph';
       }
@@ -3022,6 +4762,14 @@ class PracticePageController {
     this.statProgress = document.getElementById('stat-progress');
     this.hudTimeLabel = document.getElementById('hud-time-label');
     this.idleBadge = document.getElementById('idle-status-badge');
+    this.statPbDelta = document.getElementById('stat-pb-delta');
+    this.zenToggleBtn = document.getElementById('zen-mode-toggle');
+    this.zenIndicatorLabel = document.getElementById('zen-indicator-label');
+    this.isZenMode = (localStorage.getItem('topictyper_zen_mode') === 'true');
+    if (this.zenToggleBtn) {
+      this.zenToggleBtn.classList.toggle('active', this.isZenMode);
+      if (this.zenIndicatorLabel) this.zenIndicatorLabel.textContent = this.isZenMode ? 'ON' : 'OFF';
+    }
 
     // Initialize immediate clean time display (never NaN:NaN)
     if (this.hudTimeLabel) {
@@ -3062,6 +4810,64 @@ class PracticePageController {
     this.modalNextBtn = document.getElementById('modal-next-btn');
     this.modalRetryBtn = document.getElementById('modal-retry-btn');
     this.modalWikiLink = document.getElementById('modal-wiki-link');
+
+    // Live Rhythm Waveform & Mechanical Keycap Visualizer
+    this.waveformCanvas = document.getElementById('rhythm-waveform-canvas');
+    this.waveformComboPill = document.getElementById('waveform-combo-pill');
+    this.waveformComboLabel = document.getElementById('waveform-combo-label');
+    if (this.waveformCanvas) {
+      this.waveformVisualizer = new RhythmWaveformVisualizer(
+        this.waveformCanvas,
+        this.waveformComboPill,
+        this.waveformComboLabel
+      );
+    }
+
+    this.keycapSection = document.getElementById('keycap-visualizer-section');
+    this.keycapBoard = document.getElementById('keycap-board');
+    this.keycapNextChar = document.getElementById('keycap-next-char');
+    this.keycapToggleBtn = document.getElementById('keycap-toggle-btn');
+    this.keycapToggleText = document.getElementById('keycap-toggle-text');
+    if (this.keycapSection && this.keycapBoard) {
+      this.keycapVisualizer = new KeycapVisualizer({
+        container: this.keycapSection,
+        boardEl: this.keycapBoard,
+        nextCharEl: this.keycapNextChar,
+        toggleBtn: this.keycapToggleBtn,
+        toggleText: this.keycapToggleText,
+        storageKey: 'topictyper_keycap_viz'
+      });
+    }
+  }
+
+  handleTypingActivity(isTyping) {
+    if (this.typingActivityTimeout) {
+      clearTimeout(this.typingActivityTimeout);
+      this.typingActivityTimeout = null;
+    }
+
+    if (isTyping) {
+      if (this.isZenMode) {
+        document.body.classList.add('zen-typing-active');
+        if (typeof SoundService !== 'undefined' && SoundService.focusPadEnabled) {
+          SoundService.startFocusPad?.();
+        }
+      }
+      this.waveformVisualizer?.setTypingState(true, this.engine?.currentWpm || 0);
+
+      // Auto-reset Zen dimming and idle state on pause (after 2.5s of inactivity)
+      this.typingActivityTimeout = setTimeout(() => {
+        if (this.isZenMode) {
+          document.body.classList.remove('zen-typing-active');
+        }
+        this.waveformVisualizer?.setTypingState(false, 0);
+      }, 2500);
+    } else {
+      if (this.isZenMode) {
+        document.body.classList.remove('zen-typing-active');
+      }
+      this.waveformVisualizer?.setTypingState(false, 0);
+    }
   }
 
   initTypingEngine() {
@@ -3071,13 +4877,30 @@ class PracticePageController {
       hiddenInput: this.hiddenInput,
       mode: this.mode === 'timed' ? 'timed' : 'paragraph',
       timeLimit: this.timeLimit,
-      onMetricsUpdate: (metrics) => this.renderHUD(metrics),
-      onComplete: (finalMetrics) => this.showResultsModal(finalMetrics),
+      onMetricsUpdate: (metrics) => {
+        this.renderHUD(metrics);
+        this.waveformVisualizer?.setSpeed(metrics.wpm, metrics.combo);
+      },
+      onComplete: (finalMetrics) => {
+        this.handleTypingActivity(false);
+        this.showResultsModal(finalMetrics);
+      },
       onChunkComplete: () => this.handleTimedChunkAdvance(),
       onPauseStateChange: (isPaused) => {
         if (this.idleBadge) {
           this.idleBadge.classList.toggle('hidden', !isPaused);
         }
+        if (isPaused) {
+          this.handleTypingActivity(false);
+        }
+      },
+      onTypingStateChange: (isTyping) => this.handleTypingActivity(isTyping),
+      onKeystroke: (info) => {
+        this.keycapVisualizer?.flashKey(info.char, info.isCorrect);
+        this.waveformVisualizer?.recordKeystroke(info.isCorrect, this.engine?.currentWpm || 0, info.combo);
+      },
+      onTargetCharChange: (targetChar) => {
+        this.keycapVisualizer?.updateTargetKey(targetChar);
       }
     });
   }
@@ -3122,6 +4945,23 @@ class PracticePageController {
         }
         this.typingSection?.classList.remove('focused');
         this.focusOverlay?.classList.remove('hidden');
+      });
+    }
+
+    // Zen Mode Toggle
+    if (this.zenToggleBtn) {
+      this.zenToggleBtn.addEventListener('click', () => {
+        SoundService.playUITick();
+        this.isZenMode = !this.isZenMode;
+        localStorage.setItem('topictyper_zen_mode', this.isZenMode ? 'true' : 'false');
+        this.zenToggleBtn.classList.toggle('active', this.isZenMode);
+        if (this.zenIndicatorLabel) {
+          this.zenIndicatorLabel.textContent = this.isZenMode ? 'ON' : 'OFF';
+        }
+        if (!this.isZenMode) {
+          document.body.classList.remove('zen-typing-active');
+          SoundService.stopFocusPad?.();
+        }
       });
     }
 
@@ -3340,14 +5180,14 @@ class PracticePageController {
       const data = await WikipediaService.fetchRandomTopicSummary();
       this.processLoadedTopic(data);
     } catch (err) {
-      console.error(err);
-      this.showStatus('Could not load random topic. Loading featured article...', 'error');
-      const fallbackItem = WikipediaService.curatedTopics[Math.floor(Math.random() * WikipediaService.curatedTopics.length)];
+      console.warn('Could not load random topic. Loading featured article...', err);
+      const pool = WikipediaService.curatedTopics || [];
+      const fallbackItem = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : WikipediaService.fallbacks['computer science'];
       try {
-        const fbData = await WikipediaService.fetchTopicSummary(fallbackItem.title);
+        const fbData = await WikipediaService.fetchTopicSummary(fallbackItem.title || 'Computer science');
         this.processLoadedTopic(fbData);
       } catch (e2) {
-        this.loadTopic(fallbackItem.title);
+        this.processLoadedTopic(WikipediaService.fallbacks['computer science']);
       }
     }
   }
@@ -3358,24 +5198,60 @@ class PracticePageController {
       const data = await WikipediaService.fetchTopicSummary(topicQuery);
       this.processLoadedTopic(data);
     } catch (err) {
-      console.error(err);
-      this.showStatus(err.message || 'Failed to fetch topic summary.', 'error');
+      console.warn('loadTopic failed, falling back to reliable article:', err);
+      this.showStatus(`"${topicQuery}" summary not available offline. Loaded fallback topic.`, 'info');
+      const fallbackItem = WikipediaService.fallbacks['computer science'] || {
+        title: 'Computer science',
+        description: 'Study of computation, information, and automation',
+        extract: 'Computer science is the study of computation, information, and automation. Computer science spans theoretical disciplines such as algorithms, theory of computation, and information theory to applied disciplines including the design and implementation of hardware and software.'
+      };
+      this.processLoadedTopic(fallbackItem);
     }
   }
 
   loadWeakKeysDrill() {
-    const drill = AnalyticsService.generateWeakDrill(40);
-    const focusKeysStr = drill.weakKeys.map(k => k.toUpperCase()).join(', ');
+    const drillParam = this.urlParams.get('drill') || this.urlParams.get('id');
+    let customText = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_custom_text') : null;
+    let customTitle = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_custom_title') : null;
+    let customDesc = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('typer_custom_desc') : null;
 
-    this.currentTopicData = {
-      title: `🎯 Weak Keys Drill [${focusKeysStr}]`,
-      description: `Targeted 40-word accuracy drill designed to strengthen finger dexterity for keys: ${focusKeysStr}.`,
-      url: '#'
-    };
+    if (drillParam && (!customText || customText.length < 5)) {
+      const matched = SPECIALIZED_DRILLS.find(d => d.id === drillParam);
+      if (matched) {
+        customText = matched.text;
+        customTitle = matched.title;
+        customDesc = matched.description;
+      }
+    }
 
-    this.chunks = [drill.wordsText];
+    if (customText && customText.trim().length >= 5) {
+      this.currentTopicData = {
+        title: customTitle || 'Specialized Drill',
+        description: customDesc || 'Targeted drill practice.',
+        url: '#'
+      };
+      this.chunks = [customText.trim()];
+    } else {
+      const drill = AnalyticsService.generateWeakDrill(40);
+      const focusKeysStr = (drill.weakKeys && drill.weakKeys.length > 0)
+        ? drill.weakKeys.map(k => k.toUpperCase()).join(', ')
+        : 'E, R, T';
+
+      this.currentTopicData = {
+        title: `Weak Keys Drill [${focusKeysStr}]`,
+        description: `Targeted 40-word accuracy drill designed to strengthen finger dexterity for keys: ${focusKeysStr}.`,
+        url: '#'
+      };
+
+      this.chunks = [drill.wordsText || 'the quick brown fox jumps over the lazy dog'];
+    }
+
     this.currentChunkIndex = 0;
-    this.updateArticleMetaUI();
+    try {
+      this.updateArticleMetaUI();
+    } catch (uiErr) {
+      console.warn('updateArticleMetaUI error in loadWeakKeysDrill:', uiErr);
+    }
     if (this.wikiExternalLink) {
       this.wikiExternalLink.style.display = 'none';
     }
@@ -3385,15 +5261,30 @@ class PracticePageController {
   }
 
   processLoadedTopic(data) {
-    this.currentTopicData = data;
-    this.chunks = TextSanitizer.chunkText(data.extract, 50, 70);
+    if (!data) data = {};
+    const fallbackText = 'Knowledge is power. Learning to type with precision and velocity unlocks greater cognitive flow and unlocks the universe of possibilities.';
+    const rawExtract = (data.extract && data.extract.trim().length > 0)
+      ? data.extract.trim()
+      : (WikipediaService.fallbacks['computer science']?.extract || fallbackText);
 
-    if (this.chunks.length === 0) {
-      throw new Error('No readable text found for this topic.');
+    this.currentTopicData = {
+      title: data.title || 'Featured Article',
+      description: data.description || 'Wikipedia Extract',
+      url: data.url || '#'
+    };
+
+    let chunks = TextSanitizer.chunkText(rawExtract, 50, 70);
+    if (!chunks || chunks.length === 0) {
+      chunks = [rawExtract];
     }
 
+    this.chunks = chunks;
     this.currentChunkIndex = 0;
-    this.updateArticleMetaUI();
+    try {
+      this.updateArticleMetaUI();
+    } catch (uiErr) {
+      console.warn('updateArticleMetaUI error in processLoadedTopic:', uiErr);
+    }
     this.loadActiveChunk();
     this.hideStatus();
     this.focusTypingArea();
@@ -3443,19 +5334,47 @@ class PracticePageController {
   }
 
   loadActiveChunk() {
-    if (this.chunks.length === 0) return;
+    if (!this.chunks || this.chunks.length === 0) {
+      this.chunks = ['Focus on precision and rhythm to master the keyboard.'];
+    }
+
+    if (this.currentChunkIndex < 0 || this.currentChunkIndex >= this.chunks.length) {
+      this.currentChunkIndex = 0;
+    }
 
     const chunkText = this.chunks[this.currentChunkIndex];
-    if (this.paragraphCounterPill) {
-      this.paragraphCounterPill.textContent = `Paragraph ${this.currentChunkIndex + 1} of ${this.chunks.length}`;
+
+    // Load chunk into typing engine FIRST so arena is never blank
+    try {
+      this.engine?.loadChunk(chunkText);
+    } catch (engineErr) {
+      console.error('engine.loadChunk failed:', engineErr);
     }
 
-    if (this.nextChunkBtn) {
-      const isLast = (this.currentChunkIndex === this.chunks.length - 1);
-      this.nextChunkBtn.querySelector('span').textContent = isLast ? '↺ Practice Again [Tab]' : 'Next Paragraph [Tab] ➔';
+    // Optional UI updates wrapped safely
+    try {
+      if (this.paragraphCounterPill) {
+        this.paragraphCounterPill.textContent = `Paragraph ${this.currentChunkIndex + 1} of ${this.chunks.length}`;
+      }
+      if (this.nextChunkBtn) {
+        const span = this.nextChunkBtn.querySelector('span');
+        const isLast = (this.currentChunkIndex === this.chunks.length - 1);
+        const text = isLast ? 'Practice Again [Tab]' : 'Next Paragraph [Tab]';
+        if (span) {
+          span.textContent = text;
+        } else {
+          this.nextChunkBtn.textContent = text;
+        }
+      }
+    } catch (uiErr) {
+      console.warn('Optional UI helper failed in loadActiveChunk:', uiErr);
     }
 
-    this.engine.loadChunk(chunkText);
+    // Update target key on Keycap Visualizer
+    try {
+      this.keycapVisualizer?.updateTargetKey(this.engine?.getTargetChar?.());
+    } catch (e) {}
+
     this.focusTypingArea();
   }
 
@@ -3510,6 +5429,31 @@ class PracticePageController {
     if (this.statProgress) {
       this.statProgress.textContent = `${metrics.progressPercent}%`;
     }
+
+    if (this.statPbDelta) {
+      let pbWpm = 0;
+      try {
+        const storedPb = localStorage.getItem('topictyper_pb_wpm');
+        if (storedPb) pbWpm = parseFloat(storedPb);
+      } catch (e) {}
+
+      if (pbWpm > 0 && metrics.wpm > 0) {
+        const diff = metrics.wpm - Math.round(pbWpm);
+        if (diff > 0) {
+          this.statPbDelta.textContent = `+${diff} WPM`;
+          this.statPbDelta.className = 'hud-pill-val pace-ahead';
+        } else if (diff < 0) {
+          this.statPbDelta.textContent = `${diff} WPM`;
+          this.statPbDelta.className = 'hud-pill-val pace-behind';
+        } else {
+          this.statPbDelta.textContent = `+0 WPM`;
+          this.statPbDelta.className = 'hud-pill-val pace-even';
+        }
+      } else {
+        this.statPbDelta.textContent = '--';
+        this.statPbDelta.className = 'hud-pill-val pace-even';
+      }
+    }
   }
 
   showResultsModal(finalMetrics) {
@@ -3558,46 +5502,46 @@ class PracticePageController {
     const rankText = document.getElementById('modal-rank-text');
 
     let rankLabel = 'Solid Rhythm';
-    let rankEmoji = '✨';
+    let rankIconKey = 'sparkle';
     let rankCls = 'rank-rhythm';
 
     const activeTheme = document.documentElement.getAttribute('data-theme') || 'midnight';
 
     if (activeTheme === 'funny') {
       if (finalMetrics.wpm >= 75 && finalMetrics.accuracy >= 95) {
-        rankLabel = 'COMBO KING! 👑'; rankEmoji = '🕹️'; rankCls = 'rank-hyperspeed';
+        rankLabel = 'COMBO MASTER'; rankIconKey = 'trophy'; rankCls = 'rank-hyperspeed';
       } else if (finalMetrics.wpm >= 55) {
-        rankLabel = 'TURBO FLOW! 🚀'; rankEmoji = '🎉'; rankCls = 'rank-swift';
+        rankLabel = 'TURBO FLOW'; rankIconKey = 'bolt'; rankCls = 'rank-swift';
       } else if (finalMetrics.accuracy >= 98) {
-        rankLabel = 'BULLSEYE! 🎯'; rankEmoji = '⭐'; rankCls = 'rank-precision';
+        rankLabel = 'BULLSEYE PRECISION'; rankIconKey = 'target'; rankCls = 'rank-precision';
       } else {
-        rankLabel = 'GROOVY! 🌈'; rankEmoji = '🍌'; rankCls = 'rank-momentum';
+        rankLabel = 'GROOVY RHYTHM'; rankIconKey = 'sparkle'; rankCls = 'rank-momentum';
       }
     } else if (activeTheme === 'hacking') {
       if (finalMetrics.wpm >= 75 && finalMetrics.accuracy >= 95) {
-        rankLabel = 'ROOT ACCESS GRANTED'; rankEmoji = '⚡'; rankCls = 'rank-hyperspeed';
+        rankLabel = 'ROOT ACCESS GRANTED'; rankIconKey = 'bolt'; rankCls = 'rank-hyperspeed';
       } else if (finalMetrics.wpm >= 55) {
-        rankLabel = 'CIPHER STREAM ACTIVE'; rankEmoji = '📟'; rankCls = 'rank-swift';
+        rankLabel = 'CIPHER STREAM ACTIVE'; rankIconKey = 'terminal'; rankCls = 'rank-swift';
       } else if (finalMetrics.accuracy >= 98) {
-        rankLabel = 'PARITY VERIFIED 100%'; rankEmoji = '🎯'; rankCls = 'rank-precision';
+        rankLabel = 'PARITY VERIFIED 100%'; rankIconKey = 'shield'; rankCls = 'rank-precision';
       } else {
-        rankLabel = 'BUFFER STABLE'; rankEmoji = '🔥'; rankCls = 'rank-momentum';
+        rankLabel = 'BUFFER STABLE'; rankIconKey = 'gear'; rankCls = 'rank-momentum';
       }
     } else {
       if (finalMetrics.wpm >= 80 && finalMetrics.accuracy >= 95) {
-        rankLabel = 'Hyperspeed Master'; rankEmoji = '⚡'; rankCls = 'rank-hyperspeed';
+        rankLabel = 'Hyperspeed Master'; rankIconKey = 'trophy'; rankCls = 'rank-hyperspeed';
       } else if (finalMetrics.wpm >= 60 && finalMetrics.accuracy >= 94) {
-        rankLabel = 'Swift Flow'; rankEmoji = '🚀'; rankCls = 'rank-swift';
+        rankLabel = 'Swift Flow'; rankIconKey = 'bolt'; rankCls = 'rank-swift';
       } else if (finalMetrics.accuracy >= 98) {
-        rankLabel = 'Laser Precision'; rankEmoji = '🎯'; rankCls = 'rank-precision';
+        rankLabel = 'Laser Precision'; rankIconKey = 'target'; rankCls = 'rank-precision';
       } else if (finalMetrics.wpm >= 45) {
-        rankLabel = 'Steady Momentum'; rankEmoji = '🔥'; rankCls = 'rank-momentum';
+        rankLabel = 'Steady Momentum'; rankIconKey = 'sparkle'; rankCls = 'rank-momentum';
       }
     }
 
     if (rankBadge) {
       rankBadge.className = `modal-rank-badge ${rankCls}`;
-      if (rankIcon) rankIcon.textContent = rankEmoji;
+      if (rankIcon) rankIcon.innerHTML = getVectorIcon(rankIconKey);
       if (rankText) rankText.textContent = rankLabel;
     }
 
@@ -3629,7 +5573,7 @@ class PracticePageController {
 
     if (missedChipsContainer) {
       if (topMissed.length === 0) {
-        missedChipsContainer.innerHTML = `<span class="clean-run-badge">✨ 100% Clean Run — Zero Misses!</span>`;
+        missedChipsContainer.innerHTML = `<span class="clean-run-badge">${getVectorIcon('sparkle')} 100% Clean Run — Zero Misses!</span>`;
         if (drillKeysBtn) drillKeysBtn.style.display = 'none';
       } else {
         missedChipsContainer.innerHTML = topMissed.map(item => `
@@ -3691,7 +5635,7 @@ class PracticePageController {
     const focusKeysStr = targetLetters.map(k => k.toUpperCase()).join(', ');
 
     this.currentTopicData = {
-      title: `🎯 Weak Keys Drill [${focusKeysStr}]`,
+      title: `Weak Keys Drill [${focusKeysStr}]`,
       description: `Targeted 40-word accuracy drill for keys: ${focusKeysStr}.`,
       url: '#'
     };
@@ -3760,6 +5704,470 @@ class PracticePageController {
 }
 
 // ============================================================================
+// 7.5 DEDICATED CODE ARENA CONTROLLER (/code/)
+// ============================================================================
+class CodeArenaController {
+  constructor() {
+    this.snippetsData = window.TOPIC_TYPER_CODE_DATA || CodeSnippets;
+    this.urlParams = new URLSearchParams(window.location.search);
+    this.activeLang = this.urlParams.get('lang') || window.TOPIC_TYPER_INITIAL_LANG || 'python';
+    if (!this.snippetsData[this.activeLang]) {
+      this.activeLang = 'python';
+    }
+    this.activeDifficulty = this.urlParams.get('diff') || 'All';
+    this.requestedId = this.urlParams.get('id');
+
+    this.activeSnippetIndex = 0;
+    this.currentSnippet = null;
+    this.isModalOpen = false;
+
+    // DOM Elements
+    this.langTabs = document.querySelectorAll('.code-lang-tab');
+    this.diffPills = document.querySelectorAll('.diff-filter-pill');
+    this.chipsBar = document.getElementById('snippet-chips-bar');
+
+    this.arenaSnippetPill = document.getElementById('arena-snippet-pill');
+    this.arenaDiffPill = document.getElementById('arena-diff-pill');
+    this.arenaTitle = document.getElementById('arena-title');
+    this.arenaDesc = document.getElementById('arena-desc');
+
+    this.ideActiveIcon = document.getElementById('ide-active-icon');
+    this.ideActiveFilename = document.getElementById('ide-active-filename');
+    this.ideActiveLangBadge = document.getElementById('ide-active-lang-badge');
+    this.ideSnippetDesc = document.getElementById('ide-snippet-description');
+
+    this.ideWorkspace = document.getElementById('ide-workspace');
+    this.ideGutter = document.getElementById('ide-gutter');
+    this.codeWordsContainer = document.getElementById('code-words-container');
+    this.codeCaret = document.getElementById('code-caret');
+    this.codeHiddenInput = document.getElementById('code-hidden-input');
+    this.focusOverlay = document.getElementById('code-focus-overlay');
+
+    this.codeStatWpm = document.getElementById('code-stat-wpm');
+    this.codeStatAccuracy = document.getElementById('code-stat-accuracy');
+    this.codeStatTime = document.getElementById('code-stat-time');
+    this.codeStatProgress = document.getElementById('code-stat-progress');
+    this.codeStatErrors = document.getElementById('code-stat-errors');
+
+    this.codeRestartBtn = document.getElementById('code-restart-btn');
+    this.codeNextBtn = document.getElementById('code-next-btn');
+
+    // Modal elements
+    this.codeResultsModal = document.getElementById('code-results-modal');
+    this.codeModalBackdrop = document.getElementById('code-modal-backdrop');
+    this.codeModalRankText = document.getElementById('code-modal-rank-text');
+    this.codeModalMetaTitle = document.getElementById('code-modal-meta-title');
+    this.codeModalMetaTime = document.getElementById('code-modal-meta-time');
+    this.codeGaugeWpmBar = document.getElementById('code-gauge-wpm-bar');
+    this.codeGaugeAccBar = document.getElementById('code-gauge-acc-bar');
+    this.codeResWpm = document.getElementById('code-res-wpm');
+    this.codeResAcc = document.getElementById('code-res-acc');
+    this.codeResRawWpm = document.getElementById('code-res-raw-wpm');
+    this.codeResErrors = document.getElementById('code-res-errors');
+    this.codeResChars = document.getElementById('code-res-chars');
+    this.codeModalRetryBtn = document.getElementById('code-modal-retry-btn');
+    this.codeModalNextBtn = document.getElementById('code-modal-next-btn');
+
+    // Live Rhythm Waveform & Mechanical Keycap Visualizer
+    this.waveformCanvas = document.getElementById('code-rhythm-waveform-canvas');
+    this.waveformComboPill = document.getElementById('code-waveform-combo-pill');
+    this.waveformComboLabel = document.getElementById('code-waveform-combo-label');
+    if (this.waveformCanvas) {
+      this.waveformVisualizer = new RhythmWaveformVisualizer(
+        this.waveformCanvas,
+        this.waveformComboPill,
+        this.waveformComboLabel
+      );
+    }
+
+    this.keycapSection = document.getElementById('code-keycap-visualizer-section');
+    this.keycapBoard = document.getElementById('code-keycap-board');
+    this.keycapNextChar = document.getElementById('code-keycap-next-char');
+    this.keycapToggleBtn = document.getElementById('code-keycap-toggle-btn');
+    this.keycapToggleText = document.getElementById('code-keycap-toggle-text');
+    if (this.keycapSection && this.keycapBoard) {
+      this.keycapVisualizer = new KeycapVisualizer({
+        container: this.keycapSection,
+        boardEl: this.keycapBoard,
+        nextCharEl: this.keycapNextChar,
+        toggleBtn: this.keycapToggleBtn,
+        toggleText: this.keycapToggleText,
+        storageKey: 'topictyper_code_keycap_viz'
+      });
+    }
+
+    this.initEngine();
+    this.bindEvents();
+    this.renderLanguageTabs();
+    this.renderDifficultyPills();
+    this.renderSnippetChips();
+  }
+
+  handleTypingActivity(isTyping) {
+    if (this.typingActivityTimeout) {
+      clearTimeout(this.typingActivityTimeout);
+      this.typingActivityTimeout = null;
+    }
+    if (isTyping) {
+      this.waveformVisualizer?.setTypingState(true, this.engine?.currentWpm || 0);
+      this.typingActivityTimeout = setTimeout(() => {
+        this.waveformVisualizer?.setTypingState(false, 0);
+      }, 2500);
+    } else {
+      this.waveformVisualizer?.setTypingState(false, 0);
+    }
+  }
+
+  initEngine() {
+    this.engine = new TypingEngine({
+      wordsContainer: this.codeWordsContainer,
+      caret: this.codeCaret,
+      hiddenInput: this.codeHiddenInput,
+      mode: 'code',
+      isCodeMode: true,
+      smartIndent: true,
+      onMetricsUpdate: (metrics) => {
+        this.renderHUD(metrics);
+        this.waveformVisualizer?.setSpeed(metrics.wpm, metrics.combo);
+      },
+      onComplete: (metrics) => {
+        this.handleTypingActivity(false);
+        this.showResultsModal(metrics);
+      },
+      onLineChange: (lineNum) => this.updateActiveGutterLine(lineNum),
+      onTypingStateChange: (isTyping) => this.handleTypingActivity(isTyping),
+      onKeystroke: (info) => {
+        this.keycapVisualizer?.flashKey(info.char, info.isCorrect);
+        this.waveformVisualizer?.recordKeystroke(info.isCorrect, this.engine?.currentWpm || 0, info.combo);
+      },
+      onTargetCharChange: (targetChar) => {
+        this.keycapVisualizer?.updateTargetKey(targetChar);
+      }
+    });
+  }
+
+  getFilteredSnippets() {
+    const list = this.snippetsData[this.activeLang] || this.snippetsData.python || [];
+    if (this.activeDifficulty && this.activeDifficulty !== 'All') {
+      return list.filter(s => s.difficulty.toLowerCase() === this.activeDifficulty.toLowerCase());
+    }
+    return list;
+  }
+
+  renderLanguageTabs() {
+    if (!this.langTabs) return;
+    this.langTabs.forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.lang === this.activeLang);
+      tab.setAttribute('aria-selected', tab.dataset.lang === this.activeLang ? 'true' : 'false');
+    });
+  }
+
+  renderDifficultyPills() {
+    if (!this.diffPills) return;
+    this.diffPills.forEach(pill => {
+      pill.classList.toggle('active', pill.dataset.difficulty === this.activeDifficulty);
+    });
+  }
+
+  renderSnippetChips() {
+    if (!this.chipsBar) return;
+    const snippets = this.getFilteredSnippets();
+    if (snippets.length === 0) {
+      this.chipsBar.innerHTML = `<span class="text-muted" style="font-size:0.8rem;">No snippets for this filter.</span>`;
+      return;
+    }
+
+    if (this.requestedId) {
+      const foundIdx = snippets.findIndex(s => s.id === this.requestedId);
+      if (foundIdx !== -1) {
+        this.activeSnippetIndex = foundIdx;
+      }
+      this.requestedId = null;
+    }
+
+    if (this.activeSnippetIndex >= snippets.length) {
+      this.activeSnippetIndex = 0;
+    }
+
+    this.chipsBar.innerHTML = snippets.map((s, idx) => `
+      <button type="button" class="snippet-chip-btn ${idx === this.activeSnippetIndex ? 'active' : ''}" data-idx="${idx}">
+        ${s.title}
+      </button>
+    `).join('');
+
+    this.chipsBar.querySelectorAll('.snippet-chip-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        SoundService.playUITick();
+        this.activeSnippetIndex = parseInt(btn.dataset.idx, 10) || 0;
+        this.chipsBar.querySelectorAll('.snippet-chip-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.loadCurrentSnippet();
+      });
+    });
+
+    this.loadCurrentSnippet();
+  }
+
+  loadCurrentSnippet() {
+    const snippets = this.getFilteredSnippets();
+    if (snippets.length === 0) return;
+    const snippet = snippets[this.activeSnippetIndex] || snippets[0];
+    this.currentSnippet = snippet;
+
+    try {
+      if (this.arenaSnippetPill) this.arenaSnippetPill.textContent = `Snippet ${this.activeSnippetIndex + 1} of ${snippets.length}`;
+      if (this.arenaDiffPill) this.arenaDiffPill.textContent = snippet.difficulty;
+      if (this.arenaTitle) this.arenaTitle.textContent = snippet.title;
+      if (this.arenaDesc) this.arenaDesc.textContent = snippet.description;
+
+      if (this.ideActiveIcon) this.ideActiveIcon.innerHTML = getVectorIcon(snippet.icon || snippet.lang || 'code');
+      if (this.ideActiveFilename) this.ideActiveFilename.textContent = snippet.filename;
+      if (this.ideActiveLangBadge) this.ideActiveLangBadge.textContent = (snippet.lang || this.activeLang).toUpperCase();
+      if (this.ideSnippetDesc) this.ideSnippetDesc.textContent = snippet.description;
+
+      const lines = snippet.code.split('\n');
+      this.renderGutterLines(lines.length);
+    } catch (uiErr) {
+      console.warn('Optional UI helper failed in loadCurrentSnippet:', uiErr);
+    }
+
+    try {
+      this.engine?.loadChunk(snippet.code);
+    } catch (e) {
+      console.error('engine.loadChunk failed in CodeArena:', e);
+    }
+
+    try {
+      this.keycapVisualizer?.updateTargetKey(this.engine?.getTargetChar?.());
+    } catch (e) {}
+
+    this.updateActiveGutterLine(1);
+    this.resetHUD();
+    this.focusEditor();
+  }
+
+  renderGutterLines(lineCount) {
+    if (!this.ideGutter) return;
+    let html = '';
+    for (let i = 1; i <= lineCount; i++) {
+      html += `<div class="gutter-line-num ${i === 1 ? 'active-line' : ''}" data-line="${i}">${i}</div>`;
+    }
+    this.ideGutter.innerHTML = html;
+  }
+
+  updateActiveGutterLine(lineNum) {
+    if (!this.ideGutter) return;
+    const nums = this.ideGutter.querySelectorAll('.gutter-line-num');
+    nums.forEach(n => {
+      n.classList.toggle('active-line', parseInt(n.dataset.line, 10) === lineNum);
+    });
+  }
+
+  resetHUD() {
+    if (this.codeStatWpm) this.codeStatWpm.textContent = '0';
+    if (this.codeStatAccuracy) this.codeStatAccuracy.textContent = '100%';
+    if (this.codeStatTime) this.codeStatTime.textContent = '00:00';
+    if (this.codeStatProgress) this.codeStatProgress.textContent = '0%';
+    if (this.codeStatErrors) this.codeStatErrors.textContent = '0';
+  }
+
+  renderHUD(metrics) {
+    if (this.codeStatWpm) this.codeStatWpm.textContent = metrics.wpm;
+    if (this.codeStatAccuracy) this.codeStatAccuracy.textContent = `${metrics.accuracy}%`;
+    if (this.codeStatTime) this.codeStatTime.textContent = this.formatTime(metrics.elapsedSeconds);
+    if (this.codeStatProgress) this.codeStatProgress.textContent = `${metrics.progressPercent}%`;
+    if (this.codeStatErrors) this.codeStatErrors.textContent = metrics.errorCount;
+  }
+
+  formatTime(totalSeconds) {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  focusEditor() {
+    if (this.codeHiddenInput && !this.isModalOpen) {
+      this.codeHiddenInput.focus();
+      this.ideWorkspace?.classList.add('focused');
+      this.focusOverlay?.classList.add('hidden');
+    }
+  }
+
+  bindEvents() {
+    if (this.langTabs) {
+      this.langTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          SoundService.playUITick();
+          this.activeLang = tab.dataset.lang || 'python';
+          this.activeSnippetIndex = 0;
+          this.renderLanguageTabs();
+          this.renderSnippetChips();
+        });
+      });
+    }
+
+    if (this.diffPills) {
+      this.diffPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+          SoundService.playUITick();
+          this.activeDifficulty = pill.dataset.difficulty || 'All';
+          this.activeSnippetIndex = 0;
+          this.renderDifficultyPills();
+          this.renderSnippetChips();
+        });
+      });
+    }
+
+    if (this.ideWorkspace) {
+      this.ideWorkspace.addEventListener('click', () => this.focusEditor());
+    }
+
+    if (this.codeRestartBtn) {
+      this.codeRestartBtn.addEventListener('click', () => {
+        SoundService.playUITick();
+        this.loadCurrentSnippet();
+      });
+    }
+
+    if (this.codeNextBtn) {
+      this.codeNextBtn.addEventListener('click', () => this.advanceSnippet());
+    }
+
+    if (this.codeModalRetryBtn) {
+      this.codeModalRetryBtn.addEventListener('click', () => {
+        this.dismissModal();
+        this.loadCurrentSnippet();
+      });
+    }
+
+    if (this.codeModalNextBtn) {
+      this.codeModalNextBtn.addEventListener('click', () => {
+        this.dismissModal();
+        this.advanceSnippet();
+      });
+    }
+
+    if (this.codeModalBackdrop) {
+      this.codeModalBackdrop.addEventListener('click', () => this.dismissModal());
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (this.isModalOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          this.dismissModal();
+          this.loadCurrentSnippet();
+          return;
+        }
+        if (e.key === 'Tab' || e.key === 'Enter') {
+          e.preventDefault();
+          this.dismissModal();
+          this.advanceSnippet();
+          return;
+        }
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        this.loadCurrentSnippet();
+        return;
+      }
+
+      if (e.key === 'Tab' && document.activeElement === this.codeHiddenInput) {
+        e.preventDefault();
+        this.advanceSnippet();
+        return;
+      }
+
+      if (document.activeElement !== this.codeHiddenInput && !this.isModalOpen && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        this.focusEditor();
+      }
+    });
+  }
+
+  advanceSnippet() {
+    SoundService.playUITick();
+    const snippets = this.getFilteredSnippets();
+    if (snippets.length === 0) return;
+    this.activeSnippetIndex = (this.activeSnippetIndex + 1) % snippets.length;
+    this.renderSnippetChips();
+  }
+
+  showResultsModal(metrics) {
+    this.isModalOpen = true;
+    this.engine.isModalOpen = true;
+    SoundService.playSuccessChime();
+
+    if (this.codeModalMetaTitle) this.codeModalMetaTitle.textContent = this.currentSnippet ? this.currentSnippet.filename : 'code.py';
+    if (this.codeModalMetaTime) this.codeModalMetaTime.textContent = this.formatTime(metrics.elapsedSeconds);
+
+    if (this.codeResWpm) this.codeResWpm.textContent = metrics.wpm;
+    if (this.codeResAcc) this.codeResAcc.textContent = `${metrics.accuracy}%`;
+    if (this.codeResRawWpm) this.codeResRawWpm.textContent = `${metrics.rawWpm} WPM`;
+    if (this.codeResErrors) this.codeResErrors.textContent = metrics.errorCount;
+    if (this.codeResChars) this.codeResChars.textContent = metrics.totalKeystrokes;
+
+    let rankText = 'Clean Code Specialist';
+    if (metrics.wpm >= 80 && metrics.accuracy >= 97) {
+      rankText = '10x Systems Architect';
+    } else if (metrics.wpm >= 60 && metrics.accuracy >= 95) {
+      rankText = 'Senior Code Artisan';
+    } else if (metrics.wpm < 35 || metrics.accuracy < 85) {
+      rankText = 'Syntax Apprentice';
+    }
+    if (this.codeModalRankText) this.codeModalRankText.textContent = rankText;
+
+    const circumference = 2 * Math.PI * 50;
+    if (this.codeGaugeWpmBar) {
+      const wpmPercent = Math.min(100, (metrics.wpm / 120) * 100);
+      const wpmOffset = circumference - (wpmPercent / 100) * circumference;
+      this.codeGaugeWpmBar.style.strokeDasharray = `${circumference}`;
+      this.codeGaugeWpmBar.style.strokeDashoffset = `${wpmOffset}`;
+    }
+    if (this.codeGaugeAccBar) {
+      const accOffset = circumference - (metrics.accuracy / 100) * circumference;
+      this.codeGaugeAccBar.style.strokeDasharray = `${circumference}`;
+      this.codeGaugeAccBar.style.strokeDashoffset = `${accOffset}`;
+    }
+
+    if (this.codeResultsModal) {
+      this.codeResultsModal.classList.remove('hidden');
+    }
+
+    const payload = {
+      topic_title: `${this.currentSnippet?.title || 'Code Snippet'} (${this.currentSnippet?.filename || 'code'})`,
+      mode: 'code',
+      duration_seconds: metrics.elapsedSeconds,
+      wpm: metrics.wpm,
+      raw_wpm: metrics.rawWpm,
+      accuracy: metrics.accuracy,
+      errors_count: metrics.errorCount,
+      characters_typed: metrics.totalKeystrokes,
+      key_stats: this.engine.sessionKeyStats || {}
+    };
+
+    fetch('/api/session/save/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify(payload)
+    }).catch(err => console.warn('Could not save code session:', err));
+  }
+
+  dismissModal() {
+    this.isModalOpen = false;
+    this.engine.isModalOpen = false;
+    if (this.codeResultsModal) {
+      this.codeResultsModal.classList.add('hidden');
+    }
+    this.focusEditor();
+  }
+}
+
+// ============================================================================
 // 8. ABOUT PAGE CONTROLLER (about.html)
 // ============================================================================
 class AboutPageController {
@@ -3784,6 +6192,7 @@ if (typeof window !== 'undefined') {
   window.HeaderController = HeaderController;
   window.HomePageController = HomePageController;
   window.PracticePageController = PracticePageController;
+  window.CodeArenaController = CodeArenaController;
   window.AboutPageController = AboutPageController;
   window.TopicTyperApp = TopicTyperApp;
 }
@@ -3805,7 +6214,40 @@ document.addEventListener('DOMContentLoaded', () => {
     window.topicTyperApp = window.practiceApp;
   }
 
+  if (document.getElementById('code-arena-shell')) {
+    window.codeArenaApp = new CodeArenaController();
+  }
+
   if (document.getElementById('about-shell')) {
     window.aboutApp = new AboutPageController();
   }
+
+  if (document.getElementById('community-hub')) {
+    window.communityApp = new CommunityController();
+  }
+
+  // Global Guest Lock Modal Dismiss Listeners
+  const lockModal = document.getElementById('guest-lock-modal');
+  const lockClose = document.getElementById('guest-lock-close-icon');
+  const lockBackdrop = document.getElementById('guest-lock-backdrop');
+
+  const closeLockModal = () => {
+    if (lockModal) lockModal.classList.add('hidden');
+  };
+
+  if (lockClose) lockClose.addEventListener('click', closeLockModal);
+  if (lockBackdrop) lockBackdrop.addEventListener('click', closeLockModal);
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && lockModal && !lockModal.classList.contains('hidden')) {
+      closeLockModal();
+    }
+  });
+
+  document.querySelectorAll('.auth-locked-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (lockModal) lockModal.classList.remove('hidden');
+    });
+  });
 });

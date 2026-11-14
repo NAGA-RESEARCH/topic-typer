@@ -19,7 +19,7 @@
       id: 'creamy',
       name: 'Creamy Thock',
       shortName: 'Creamy',
-      icon: '🧈',
+      icon: 'creamy',
       desc: 'Deep warm PBT switch thock',
       baseFreq: 240,
       endFreq: 110,
@@ -36,7 +36,7 @@
       id: 'brown',
       name: 'Tactile Brown',
       shortName: 'Brown',
-      icon: '🌰',
+      icon: 'brown',
       desc: 'Balanced mid-range tactile bump',
       baseFreq: 330,
       endFreq: 160,
@@ -53,7 +53,7 @@
       id: 'blue',
       name: 'Clicky Blue',
       shortName: 'Clicky',
-      icon: '💎',
+      icon: 'blue',
       desc: 'Sharp high-frequency click-jacket snap',
       baseFreq: 380,
       endFreq: 180,
@@ -70,7 +70,7 @@
       id: 'typewriter',
       name: 'Retro Typewriter',
       shortName: 'Typewriter',
-      icon: '📜',
+      icon: 'typewriter',
       desc: 'Vintage mechanical clack & carriage bell',
       baseFreq: 190,
       endFreq: 85,
@@ -87,7 +87,7 @@
       id: 'sync',
       name: 'Theme Sync (Auto)',
       shortName: 'Theme Sync',
-      icon: '✨',
+      icon: 'sync',
       desc: 'Adapts dynamically to active visual theme'
     }
   };
@@ -102,6 +102,9 @@
     enabled: true,
     profile: 'creamy',
     activeTheme: 'midnight',
+    comboStreak: 0,
+    focusPadEnabled: false,
+    focusPadNodes: null,
 
     init() {
       // Restore persisted preferences
@@ -119,6 +122,11 @@
         if (storedProfile && SOUND_PROFILES[storedProfile]) {
           this.profile = storedProfile;
         }
+
+        const storedFocusPad = localStorage.getItem('topictyper_focus_pad');
+        if (storedFocusPad !== null) {
+          this.focusPadEnabled = (storedFocusPad === '1');
+        }
       } catch (e) {}
 
       // Get initial theme
@@ -129,24 +137,55 @@
         this.activeTheme = e.detail?.theme || 'midnight';
       });
 
-      // Auto-unlock AudioContext on first user gesture
+      // Auto-unlock AudioContext on first user gesture & resume focus pad if enabled
       const unlockAudio = () => {
-        this.ensureContext();
+        if (this.ensureContext()) {
+          if (this.audioCtx && this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume().catch(() => {});
+          }
+          if (this.focusPadEnabled && !this.focusPadNodes) {
+            this.startFocusPad();
+          }
+        }
         window.removeEventListener('click', unlockAudio);
         window.removeEventListener('keydown', unlockAudio);
         window.removeEventListener('touchstart', unlockAudio);
+        window.removeEventListener('pointerdown', unlockAudio);
       };
       window.addEventListener('click', unlockAudio, { passive: true });
       window.addEventListener('keydown', unlockAudio, { passive: true });
       window.addEventListener('touchstart', unlockAudio, { passive: true });
+      window.addEventListener('pointerdown', unlockAudio, { passive: true });
+
+      // Tab visibility listener: save battery/CPU when inactive
+      document.addEventListener('visibilitychange', () => {
+        if (!this.audioCtx) return;
+        if (document.hidden) {
+          if (this.audioCtx.state === 'running') {
+            this.audioCtx.suspend().catch(() => {});
+          }
+        } else {
+          if (this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume().catch(() => {});
+          }
+        }
+      });
     },
 
     ensureContext() {
+      // 1. Maintain a single window-level singleton instance
+      if (!this.audioCtx && window.__topictyper_audio_ctx) {
+        this.audioCtx = window.__topictyper_audio_ctx;
+        this.compressor = window.__topictyper_audio_compressor || null;
+        this.masterGain = window.__topictyper_audio_master_gain || null;
+      }
+
       if (!this.audioCtx) {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextClass) return false;
         try {
           this.audioCtx = new AudioContextClass();
+          window.__topictyper_audio_ctx = this.audioCtx;
 
           // Master Dynamics Compressor: prevents any distortion during 120+ WPM typing bursts
           this.compressor = this.audioCtx.createDynamicsCompressor();
@@ -155,10 +194,12 @@
           this.compressor.ratio.setValueAtTime(8, this.audioCtx.currentTime);
           this.compressor.attack.setValueAtTime(0.003, this.audioCtx.currentTime);
           this.compressor.release.setValueAtTime(0.08, this.audioCtx.currentTime);
+          window.__topictyper_audio_compressor = this.compressor;
 
           // Master Gain
           this.masterGain = this.audioCtx.createGain();
           this.masterGain.gain.setValueAtTime(this.enabled ? 0.95 : 0.0, this.audioCtx.currentTime);
+          window.__topictyper_audio_master_gain = this.masterGain;
 
           this.compressor.connect(this.masterGain);
           this.masterGain.connect(this.audioCtx.destination);
@@ -202,6 +243,98 @@
       return this.setMasterEnabled(!this.enabled);
     },
 
+    // ------------------------------------------------------------------------
+    // Focus Pad Ambient Warm Drone Controller
+    // ------------------------------------------------------------------------
+    setFocusPadEnabled(enabled) {
+      this.focusPadEnabled = !!enabled;
+      try {
+        localStorage.setItem('topictyper_focus_pad', this.focusPadEnabled ? '1' : '0');
+      } catch (e) {}
+
+      if (this.focusPadEnabled) {
+        this.startFocusPad();
+      } else {
+        this.stopFocusPad();
+      }
+      return this.focusPadEnabled;
+    },
+
+    toggleFocusPad() {
+      return this.setFocusPadEnabled(!this.focusPadEnabled);
+    },
+
+    startFocusPad() {
+      if (!this.ensureContext()) return;
+      if (this.focusPadNodes) return; // already running
+
+      const ctx = this.audioCtx;
+      const now = ctx.currentTime;
+      const dest = this.masterGain || ctx.destination;
+
+      try {
+        // Dual warm root + fifth harmonic oscillators (A2 110Hz + E3 164.81Hz)
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const oscSub = ctx.createOscillator();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(110.0, now); // A2
+
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(164.81, now); // E3 (fifth)
+
+        oscSub.type = 'sine';
+        oscSub.frequency.setValueAtTime(55.0, now); // A1 deep grounding sub
+
+        // Warm 220Hz low-pass filter
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(220, now);
+        filter.Q.setValueAtTime(1.2, now);
+
+        // Ultra-soft background gain node
+        const padGain = ctx.createGain();
+        padGain.gain.setValueAtTime(0.0001, now);
+        // Gentle 2.5-second warm swell to subtle ~0.022 volume
+        padGain.gain.exponentialRampToValueAtTime(0.022, now + 2.5);
+
+        osc1.connect(filter);
+        osc2.connect(filter);
+        oscSub.connect(filter);
+        filter.connect(padGain);
+        padGain.connect(dest);
+
+        osc1.start(now);
+        osc2.start(now);
+        oscSub.start(now);
+
+        this.focusPadNodes = { osc1, osc2, oscSub, filter, padGain };
+      } catch (err) {
+        console.warn('Could not start focus pad drone:', err);
+      }
+    },
+
+    stopFocusPad() {
+      if (!this.focusPadNodes) return;
+      const { osc1, osc2, oscSub, padGain } = this.focusPadNodes;
+      this.focusPadNodes = null;
+
+      if (this.audioCtx) {
+        const now = this.audioCtx.currentTime;
+        try {
+          padGain.gain.linearRampToValueAtTime(0.0001, now + 1.2);
+          setTimeout(() => {
+            try {
+              osc1.stop();
+              osc2.stop();
+              oscSub.stop();
+            } catch (e) {}
+          }, 1300);
+        } catch (e) {}
+      }
+    },
+
     /**
      * Resolves the effective acoustic parameters considering Theme Sync (Auto).
      */
@@ -213,6 +346,10 @@
           return SOUND_PROFILES.brown;
         } else if (this.activeTheme === 'funny') {
           return { ...SOUND_PROFILES.creamy, isArcadePop: true };
+        } else if (this.activeTheme === 'zen_matcha') {
+          return { ...SOUND_PROFILES.creamy, filterFreq: 520, filterQ: 2.5, bodyGain: 0.055 };
+        } else if (this.activeTheme === 'warm_amber') {
+          return { ...SOUND_PROFILES.brown, filterFreq: 750, bodyGain: 0.065 };
         }
         return SOUND_PROFILES.creamy;
       }
@@ -230,10 +367,17 @@
       const now = ctx.currentTime;
       const dest = this.compressor || this.masterGain || ctx.destination;
 
-      // 1. Error Keystroke: Subtle, non-jarring muted low-end thud (~95 Hz)
+      // 1. Error Keystroke: Smooth reset of combo streak & subtle muted low-end thud (~95 Hz)
       if (isError) {
+        this.comboStreak = 0;
         this.synthesizeErrorThud(ctx, now, dest);
         return;
+      }
+
+      // Track streak and gently layer flow-state harmonic resonance
+      this.comboStreak++;
+      if (this.comboStreak >= 5) {
+        this.synthesizeFlowHarmonic(ctx, now, dest, this.comboStreak);
       }
 
       // 2. Micro-randomization on every keystroke: ±6% pitch, ±5% gain
@@ -533,6 +677,42 @@
       osc2.start(now);
       osc1.stop(now + 0.78);
       osc2.stop(now + 0.78);
+    },
+
+    /**
+     * Pentatonic harmonic resonance that warms up gently during long error-free
+     * combo streaks (triggering flow-state feedback without harsh pitch jumps)
+     * and resets smoothly on a typo.
+     */
+    synthesizeFlowHarmonic(ctx, now, dest, streak) {
+      const PENTATONIC = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00];
+      const noteIdx = streak % PENTATONIC.length;
+      const freq = PENTATONIC[noteIdx];
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1400, now);
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+
+      // Volume is kept very gentle (~0.008 to 0.020) so it supports rather than distracts
+      const flowGain = Math.min(0.020, 0.007 + (Math.min(streak, 40) * 0.0003));
+      const duration = 0.18;
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(flowGain, now + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(dest);
+
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
     }
   };
 
@@ -549,6 +729,8 @@
       this.activeIcon = document.getElementById('sound-active-icon');
       this.activeProfileLabel = document.getElementById('sound-active-profile');
       this.profileOptions = document.querySelectorAll('.sound-option-btn');
+      this.focusPadToggle = document.getElementById('focus-pad-toggle');
+      this.focusPadLabel = document.getElementById('focus-pad-label');
 
       this.updateUI();
       this.bindEvents();
@@ -561,7 +743,9 @@
         this.activeProfileLabel.textContent = SoundService.enabled ? profile.shortName : 'Muted';
       }
       if (this.activeIcon) {
-        this.activeIcon.textContent = SoundService.enabled ? '🔊' : '🔇';
+        const volumeOnSvg = '<svg class="header-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
+        const volumeOffSvg = '<svg class="header-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+        this.activeIcon.innerHTML = SoundService.enabled ? volumeOnSvg : volumeOffSvg;
       }
       if (this.muteLabel) {
         this.muteLabel.textContent = SoundService.enabled ? 'Enabled' : 'Muted';
@@ -576,6 +760,12 @@
       this.profileOptions?.forEach(btn => {
         btn.classList.toggle('selected', btn.dataset.profile === SoundService.profile);
       });
+
+      if (this.focusPadToggle && this.focusPadLabel) {
+        const isActive = SoundService.focusPadEnabled;
+        this.focusPadLabel.textContent = isActive ? 'ACTIVE' : 'OFF';
+        this.focusPadToggle.classList.toggle('active', isActive);
+      }
     },
 
     bindEvents() {
@@ -619,6 +809,15 @@
           }
         });
       });
+
+      // Ambient Focus Pad Toggle
+      if (this.focusPadToggle) {
+        this.focusPadToggle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          SoundService.toggleFocusPad();
+          this.updateUI();
+        });
+      }
 
       // Dismiss dropdown on outside click
       document.addEventListener('click', (e) => {

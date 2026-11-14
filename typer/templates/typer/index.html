@@ -1,46 +1,66 @@
 {% extends 'typer/base.html' %}
 {% load static %}
 
-{% block title %}TopicTyper — Learn While You Type{% endblock %}
+{% block title %}TopicTyper v6.0 — Learn While You Type{% endblock %}
 {% block meta_description %}An open-learning typing and reading experiment. Learn interesting Wikipedia topics while improving your typing speed and accuracy. Built by Naga Research Lab.{% endblock %}
 {% block brand_subtitle %}Learn While You Type{% endblock %}
 {% block navbar_search %}{% endblock %}
 
 {% block content %}
-<!-- Streamlined Visual Setup Dashboard -->
+<!-- Streamlined Visual Setup Dashboard (#1 Core Hero First) -->
 <main id="home-setup-dashboard" class="setup-hero-streamlined">
-  <!-- Minimalist Hero Header with PB & Daily Streak -->
+  <!-- Minimalist Hero Header with Sleek Minimal Glass Telemetry Bar -->
   <div class="hero-top-strip">
-    <div class="hero-top-left">
-      <div class="hero-badge-pill">
-        <span class="badge-pulse-dot"></span>
-        <span>Interactive Keystream</span>
+    <div class="hero-glass-telemetry" aria-label="Quick Performance Telemetry">
+      <div class="hero-stat-pill pill-pb" id="home-pb-pill" title="All-Time Personal Best Speed">
+        <span class="pill-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+            <path d="M4 22h16"></path>
+            <path d="M10 14.66V17c0 .55-.45 1-1 1H8c-.55 0-1 .45-1 1v1h10v-1c0-.55-.45-1-1-1h-1c-.55 0-1-.45-1-1v-2.34"></path>
+            <path d="M18 4H6v7a6 6 0 0 0 12 0V4z"></path>
+          </svg>
+        </span>
+        <span class="pill-label">Best:</span>
+        <span class="pill-text" id="home-pb-text">0 WPM</span>
       </div>
-      <div class="hero-stats-badges">
-        <span class="hero-stat-pill pill-pb" id="home-pb-pill" title="All-Time Personal Best Speed">
-          <span class="pill-icon">🏆</span>
-          <span class="pill-text" id="home-pb-text">PB: -- WPM</span>
+      <span class="hero-telemetry-divider" aria-hidden="true">•</span>
+      <div class="hero-stat-pill pill-streak" id="home-streak-pill" title="Consecutive Practice Days">
+        <span class="pill-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
+          </svg>
         </span>
-        <span class="hero-stat-pill pill-streak" id="home-streak-pill" title="Consecutive Practice Days">
-          <span class="pill-icon">🔥</span>
-          <span class="pill-text" id="home-streak-text">0 Day Streak</span>
-        </span>
+        <span class="pill-text" id="home-streak-text">0 Day Streak</span>
       </div>
     </div>
     <h1 class="hero-title" aria-label="Master Typing. Learn the Universe.">Master Typing. <span class="hero-title-accent">Learn the Universe.</span></h1>
+    <p class="hero-subtitle-desc">The encyclopedia typing trainer. Type real Wikipedia knowledge, sharpen typing fluidity, and expand your mind.</p>
   </div>
 
+  <!-- Primary #1 Position: Core Wikipedia Topic Practice Setup Card -->
   <div class="setup-card visual-setup-card">
     <!-- Top Action Strip: Mode Segmented Control + Prominent Weak Keys CTA -->
     <div class="setup-control-strip">
       <div class="mode-control-group">
         <div class="mode-segmented-control" role="tablist" aria-label="Practice Mode Selector">
           <button type="button" class="mode-tab selected" data-mode="paragraph" id="mode-card-paragraph" role="tab" aria-selected="true" title="Complete Paragraph Mode">
-            <span class="tab-icon">📖</span>
+            <span class="tab-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              </svg>
+            </span>
             <span class="tab-label">Paragraph</span>
           </button>
           <button type="button" class="mode-tab" data-mode="timed" id="mode-card-timed" role="tab" aria-selected="false" title="Timed Sprint Mode">
-            <span class="tab-icon">⏱️</span>
+            <span class="tab-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </span>
             <span class="tab-label">Timed Sprint</span>
           </button>
         </div>
@@ -56,116 +76,193 @@
         </div>
       </div>
 
-      <!-- Prominent Practice Weak Keys CTA (Right beside mode selector!) -->
+      <!-- Practice Weak Keys CTA (Gated for guests) -->
       <div class="weak-drill-quick-cta">
-        <button type="button" id="practice-weak-keys-top-btn" class="btn btn-weak-drill" title="Practice custom drill targeting your weak letters">
-          <span class="drill-icon">🎯</span>
+        <button type="button" id="practice-weak-keys-top-btn" class="btn btn-weak-drill {% if not user.is_authenticated %}auth-locked-btn{% endif %}" title="Practice custom drill targeting your weak letters">
+          <span class="drill-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="6"></circle>
+              <circle cx="12" cy="12" r="2"></circle>
+            </svg>
+          </span>
           <span class="drill-title">Practice Weak Keys</span>
+          {% if not user.is_authenticated %}
+          <span class="lock-indicator-badge" title="Sign in to target weak keys">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </span>
+          {% else %}
           <div id="quick-weak-chips" class="quick-weak-chips" aria-label="Weak keys target">
             <span class="chip-key">E</span>
             <span class="chip-key">R</span>
             <span class="chip-key">T</span>
           </div>
-          <span class="drill-arrow">➔</span>
+          {% endif %}
+          <span class="drill-arrow">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </span>
         </button>
       </div>
     </div>
 
-    <!-- Content Source Selection Tabs: Wikipedia vs Custom / Code -->
+    <!-- Content Source Selection Tabs: Wikipedia (Open/Guest) vs Specialized Drills (Auth) vs Custom/Code (Auth) -->
     <div class="content-source-tabs" role="tablist" aria-label="Content Source Selector">
       <button type="button" class="source-tab active" id="tab-source-wiki" role="tab" aria-selected="true" data-tab="wiki">
-        <span class="tab-icon">🌌</span>
+        <span class="tab-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+        </span>
         <span class="tab-label">Wikipedia Topics</span>
       </button>
-      <button type="button" class="source-tab" id="tab-source-custom" role="tab" aria-selected="false" data-tab="custom">
-        <span class="tab-icon">💻</span>
+
+      <button type="button" class="source-tab {% if not user.is_authenticated %}tab-gated-guest{% endif %}" id="tab-source-drills" role="tab" aria-selected="false" data-tab="drills">
+        <span class="tab-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+        </span>
+        <span class="tab-label">Specialized Drills</span>
+        {% if not user.is_authenticated %}
+        <span class="tab-lock-badge" title="Sign in required">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </span>
+        {% endif %}
+      </button>
+
+      <button type="button" class="source-tab {% if not user.is_authenticated %}tab-gated-guest{% endif %}" id="tab-source-custom" role="tab" aria-selected="false" data-tab="custom">
+        <span class="tab-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+        </span>
         <span class="tab-label">Custom / Code</span>
+        {% if not user.is_authenticated %}
+        <span class="tab-lock-badge" title="Sign in required">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </span>
+        {% endif %}
       </button>
     </div>
 
-    <!-- Pane A: Curated Wikipedia Topics Grid & Search -->
+    <!-- Pane A: Curated Wikipedia Topics Grid & Live Search (Primary Hero #1 Position) -->
     <div id="panel-source-wiki" class="source-panel">
       <div class="topics-visual-section">
         <div class="section-label-row">
-          <span class="section-label-badge">Select Topic</span>
-          <span class="section-label-hint">Or search custom topic below</span>
+          <span class="section-label-badge">Select Wikipedia Topic</span>
+          <span class="section-label-hint">Pick any topic or search custom below — No account required</span>
         </div>
 
         <div class="topic-cards-grid visual-grid" id="curated-topic-grid">
-          <div class="topic-card" data-topic="James Webb Space Telescope" title="James Webb Space Telescope">
-            <span class="topic-card-icon">🌌</span>
-            <div class="topic-card-body">
-              <span class="topic-card-title">James Webb</span>
-              <span class="topic-card-tag">Astronomy</span>
+          {% for topic in curated_topics %}
+          <div class="topic-card category-{{ topic.category|slugify }}" data-topic="{{ topic.title }}" data-category="{{ topic.category }}" title="{{ topic.title }}: {{ topic.description }}">
+            <div class="topic-card-accent-strip"></div>
+            <div class="topic-card-pattern" aria-hidden="true">
+              <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <pattern id="card-geo-pattern-{{ forloop.counter }}" width="22" height="22" patternUnits="userSpaceOnUse">
+                    <circle cx="2" cy="2" r="1" fill="currentColor" opacity="0.08"/>
+                    <path d="M0 22L22 0M11 22L22 11M0 11L11 0" stroke="currentColor" stroke-width="0.5" stroke-dasharray="2 2" opacity="0.04"/>
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#card-geo-pattern-{{ forloop.counter }})" />
+              </svg>
             </div>
+            <div class="topic-card-header">
+              <span class="topic-card-icon">
+              {% if topic.icon == 'telescope' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m10 12-6 1.3a1 1 0 0 1-1.1-.7l-.5-2.2a1 1 0 0 1 .7-1.2L16.6 5"></path><path d="m13.5 11.7 4.3-.9"></path><path d="m16 21-3.1-6.2"></path><path d="m6.5 18 2.5-3"></path><path d="m14 15 4 6"></path></svg>
+              {% elif topic.icon == 'cpu' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
+              {% elif topic.icon == 'lock' or topic.icon == 'shield' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              {% elif topic.icon == 'brain' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04z"></path></svg>
+              {% elif topic.icon == 'atom' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"></circle><path d="M20.2 20.2c2.4-2.4 2.4-6.3 0-8.7L12 3.3 3.8 11.5c-2.4 2.4-2.4 6.3 0 8.7 2.4 2.4 6.3 2.4 8.7 0l7.7-7.7"></path></svg>
+              {% elif topic.icon == 'dna' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 15c6.667-6 13.333 0 20-6"></path><path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993"></path><path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993"></path><path d="m17 6-2.5-2.5"></path><path d="m14 8-1-1"></path><path d="m7 18 2.5 2.5"></path><path d="m3.5 14.5.5.5"></path><path d="m20 9 .5.5"></path><path d="m6.5 12.5 1 1"></path><path d="m16.5 10.5 1 1"></path><path d="m10 16 1 1"></path><path d="m13 13.5 1 1"></path></svg>
+              {% else %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+              {% endif %}
+            </span>
+            <span class="topic-time-badge" title="Estimated reading and typing duration">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>~45s</span>
+            </span>
           </div>
-
-          <div class="topic-card" data-topic="Quantum Mechanics" title="Quantum Mechanics">
-            <span class="topic-card-icon">⚛️</span>
-            <div class="topic-card-body">
-              <span class="topic-card-title">Quantum</span>
-              <span class="topic-card-tag">Physics</span>
-            </div>
-          </div>
-
-          <div class="topic-card" data-topic="Artificial Intelligence" title="Artificial Intelligence">
-            <span class="topic-card-icon">🤖</span>
-            <div class="topic-card-body">
-              <span class="topic-card-title">AI &amp; Neural Nets</span>
-              <span class="topic-card-tag">Computing</span>
-            </div>
-          </div>
-
-          <div class="topic-card" data-topic="Ancient Rome" title="Ancient Rome">
-            <span class="topic-card-icon">🏛️</span>
-            <div class="topic-card-body">
-              <span class="topic-card-title">Ancient Rome</span>
-              <span class="topic-card-tag">History</span>
-            </div>
-          </div>
-
-          <div class="topic-card" data-topic="Biodiversity" title="Biodiversity">
-            <span class="topic-card-icon">🌿</span>
-            <div class="topic-card-body">
-              <span class="topic-card-title">Biodiversity</span>
-              <span class="topic-card-tag">Nature</span>
-            </div>
-          </div>
-
-          <div class="topic-card" data-topic="Cognitive Science" title="Cognitive Science">
-            <span class="topic-card-icon">🧠</span>
-            <div class="topic-card-body">
-              <span class="topic-card-title">Cognitive Science</span>
-              <span class="topic-card-tag">Mind</span>
-            </div>
-          </div>
-
-          <div class="topic-card" data-topic="Renaissance" title="Renaissance">
-            <span class="topic-card-icon">🎨</span>
-            <div class="topic-card-body">
-              <span class="topic-card-title">Renaissance</span>
-              <span class="topic-card-tag">Art</span>
-            </div>
-          </div>
-
-          <div class="topic-card" data-topic="random" title="Surprise Me (Random Topic)">
-            <span class="topic-card-icon">🎲</span>
-            <div class="topic-card-body">
-              <span class="topic-card-title">Surprise Me</span>
-              <span class="topic-card-tag">Random</span>
-            </div>
+          <div class="topic-card-body">
+            <span class="topic-card-title">{{ topic.display_title }}</span>
+            <span class="topic-card-tag">{{ topic.category }}</span>
           </div>
         </div>
+        {% endfor %}
 
-        <!-- Compact Inline Topic Selection Prompt (Shown only if launch clicked without topic) -->
+        <!-- Dynamic Surprise Me Card -->
+        <div class="topic-card topic-card-random category-random" data-topic="random" title="Surprise Me (Random Encyclopedia Topic)">
+          <div class="topic-card-accent-strip"></div>
+          <div class="topic-card-pattern" aria-hidden="true">
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="card-geo-pattern-random" width="22" height="22" patternUnits="userSpaceOnUse">
+                  <circle cx="5" cy="5" r="1.5" fill="currentColor" opacity="0.08"/>
+                  <circle cx="16" cy="16" r="1.5" fill="currentColor" opacity="0.08"/>
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#card-geo-pattern-random)" />
+            </svg>
+          </div>
+          <div class="topic-card-header">
+            <span class="topic-card-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"></circle>
+                <circle cx="15.5" cy="8.5" r="1.5" fill="currentColor"></circle>
+                <circle cx="12" cy="12" r="1.5" fill="currentColor"></circle>
+                <circle cx="8.5" cy="15.5" r="1.5" fill="currentColor"></circle>
+                <circle cx="15.5" cy="15.5" r="1.5" fill="currentColor"></circle>
+              </svg>
+            </span>
+            <span class="topic-time-badge badge-surprise" title="Random topic selection">
+              <span>✦ Surprise</span>
+            </span>
+          </div>
+          <div class="topic-card-body">
+            <span class="topic-card-title">Surprise Me</span>
+            <span class="topic-card-tag">Random Topic</span>
+          </div>
+        </div>
+        </div>
+
+        <!-- Inline Topic Prompt Banner -->
         <div id="topic-prompt-pill" class="topic-prompt-pill hidden" role="alert" aria-live="polite">
-          <span class="prompt-icon">👉</span>
-          <span class="prompt-text">Select a topic above or hit Surprise Me 🎲 to start!</span>
+          <span class="prompt-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </span>
+          <span class="prompt-text">Select a topic above or hit Surprise Me to start!</span>
         </div>
 
         <!-- Custom Topic Search Box -->
         <div class="custom-topic-box visual-search-box">
-          <span class="search-icon" aria-hidden="true">🔍</span>
+          <span class="search-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
           <input 
             type="text" 
             id="custom-topic-input" 
@@ -181,22 +278,65 @@
       <!-- Start Launch Row -->
       <div class="start-cta-row visual-cta-row">
         <a href="{% url 'practice' %}" id="start-practice-btn" class="btn btn-primary btn-hero btn-glow">
-          <span class="cta-pulse-icon">⚡</span>
-          <span>Launch Practice Arena ➔</span>
+          <span class="cta-pulse-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </span>
+          <span>Launch Practice Arena</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </a>
       </div>
     </div>
 
-    <!-- Pane B: Custom Text & Code Snippet Mode -->
+    <!-- Pane B: Specialized Developer Drills (Login-Gated) -->
+    <div id="panel-source-drills" class="source-panel hidden">
+      <div class="drills-section-wrapper">
+        <div class="section-label-row">
+          <span class="section-label-badge">Developer Drills</span>
+          <span class="section-label-hint">High-frequency programming tokens, terminal syntax &amp; numbers</span>
+        </div>
+
+        <div class="drills-cards-grid">
+          {% for drill in specialized_drills %}
+          <div class="specialized-drill-card" data-drill-type="{{ drill.drill_id }}">
+            <div class="drill-card-top">
+              <span class="drill-card-icon">
+                {% if 'symbol' in drill.drill_id %}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                {% elif 'bash' in drill.drill_id or 'cli' in drill.drill_id %}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                {% else %}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>
+                {% endif %}
+              </span>
+              <span class="drill-card-tag">{{ drill.tag }}</span>
+            </div>
+            <div class="drill-card-body">
+              <h3 class="drill-card-title">{{ drill.title }}</h3>
+              <p class="drill-card-desc">{{ drill.description }}</p>
+              <div class="drill-sample-preview">
+                <code>{{ drill.text|truncatechars:90 }}</code>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm drill-launch-action" data-drill-index="{{ forloop.counter0 }}">
+              <span>Start Drill</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Pane C: Custom Text & Code Snippet Mode (Login-Gated) -->
     <div id="panel-source-custom" class="source-panel hidden">
       <div class="custom-source-wrapper">
         <!-- Subtabs: Paste Text vs Code Snippets -->
         <div class="custom-subtabs-row">
           <button type="button" class="custom-subtab-btn active" id="subtab-btn-text" data-subtab="text">
-            <span>📝 Paste Custom Text</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <span>Paste Custom Text</span>
           </button>
           <button type="button" class="custom-subtab-btn" id="subtab-btn-code" data-subtab="code">
-            <span>💻 Code Snippets</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            <span>Code Snippets ({{ code_snippets_count }}+ Programs)</span>
           </button>
         </div>
 
@@ -217,7 +357,7 @@
                 <span id="custom-chars-count">0 characters</span>
               </div>
               <button type="button" id="start-custom-text-btn" class="btn btn-primary btn-sm" disabled>
-                <span>Practice Custom Text ➔</span>
+                <span>Practice Custom Text</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
               </button>
             </div>
           </div>
@@ -231,24 +371,35 @@
                 <span class="control-label">Language:</span>
                 <div class="lang-pills" role="radiogroup" aria-label="Code language">
                   <button type="button" class="lang-pill active" data-lang="python">Python</button>
+                  <button type="button" class="lang-pill" data-lang="cpp">C++</button>
                   <button type="button" class="lang-pill" data-lang="javascript">JavaScript</button>
                   <button type="button" class="lang-pill" data-lang="sql">SQL</button>
+                  <button type="button" class="lang-pill" data-lang="bash">Linux / Bash</button>
+                  <button type="button" class="lang-pill" data-lang="html_css">HTML/CSS</button>
                 </div>
               </div>
               <div class="snippet-chips-row" id="snippet-chips-container">
-                <!-- Dynamically populated snippet selector chips -->
+                <!-- Dynamically populated from /api/code/snippets/ -->
               </div>
             </div>
 
             <div class="code-preview-container">
               <div class="code-preview-topbar">
                 <div class="code-file-meta">
-                  <span class="code-lang-icon" id="code-lang-icon">🐍</span>
-                  <span class="code-file-title" id="code-file-title">fibonacci.py</span>
+                  <span class="code-lang-icon" id="code-lang-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                  </span>
+                  <span class="code-file-title" id="code-file-title">sales_metrics.py</span>
                 </div>
-                <button type="button" id="start-code-practice-btn" class="btn btn-primary btn-sm">
-                  <span>Practice Code ➔</span>
-                </button>
+                <div class="code-preview-top-actions">
+                  <a href="{% url 'code_arena' %}" class="btn btn-outline btn-sm" title="Launch Dedicated Code Arena">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    <span>Full IDE Arena</span>
+                  </a>
+                  <button type="button" id="start-code-practice-btn" class="btn btn-primary btn-sm">
+                    <span>Practice Code</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </button>
+                </div>
               </div>
               <pre class="code-preview-body"><code id="code-preview-content"></code></pre>
             </div>
@@ -257,6 +408,71 @@
       </div>
     </div>
   </div>
+
+  {% if recommendations and user.is_authenticated %}
+  <!-- Personalized Recommendations Strip (for authenticated users) -->
+  <section class="recommended-strip" aria-label="Personalized Recommendations">
+    <div class="recommended-header">
+      <div class="recommended-title-group">
+        <span class="rec-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        </span>
+        <div class="rec-text-meta">
+          <div class="rec-title-row">
+            <h2 class="rec-heading">Recommended For You</h2>
+            <span class="badge badge-accent">{{ recommendations.speed_tier.label }}</span>
+            <span class="badge badge-subtle">{{ recommendations.skill_level }}</span>
+          </div>
+          <p class="rec-insight">{{ recommendations.weak_keys_insight }}</p>
+        </div>
+      </div>
+      <a href="{% url 'code_arena' %}" class="btn btn-outline btn-sm" title="Launch Dedicated Code Arena">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        <span>Open Code Arena</span>
+      </a>
+    </div>
+
+    <div class="recommended-cards-grid">
+      {% for prog in recommendations.recommended_programs %}
+      <div class="rec-card rec-card-code" data-code-id="{{ prog.id }}" data-lang="{{ prog.lang }}" title="{{ prog.title }}">
+        <div class="rec-card-top">
+          <span class="rec-card-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          </span>
+          <span class="rec-card-badge">{{ prog.difficulty }}</span>
+        </div>
+        <div class="rec-card-body">
+          <h3 class="rec-card-title">{{ prog.title }}</h3>
+          <span class="rec-card-sub">{{ prog.filename }}</span>
+          <p class="rec-card-desc">{{ prog.description }}</p>
+        </div>
+        <a href="{% url 'code_arena' %}?lang={{ prog.lang }}&id={{ prog.id }}" class="rec-launch-btn">
+          <span>Practice Code</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </a>
+      </div>
+      {% endfor %}
+
+      {% for drill in recommendations.recommended_drills %}
+      <div class="rec-card rec-card-drill" data-drill-id="{{ drill.id }}" title="{{ drill.title }}">
+        <div class="rec-card-top">
+          <span class="rec-card-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+          </span>
+          <span class="rec-card-badge drill-badge">Weak Keys Drill</span>
+        </div>
+        <div class="rec-card-body">
+          <h3 class="rec-card-title">{{ drill.title }}</h3>
+          <span class="rec-card-sub">{{ drill.tag }}</span>
+          <p class="rec-card-desc">{{ drill.description }}</p>
+        </div>
+        <button type="button" class="rec-launch-btn drill-launch-trigger" data-drill-id="{{ drill.id }}">
+          <span>Launch Drill</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
 </main>
 
 <!-- Performance Analytics & Practice History -->
@@ -278,7 +494,9 @@
         <canvas id="wpm-trend-canvas" width="680" height="210"></canvas>
         <div id="chart-tooltip" class="chart-tooltip hidden"></div>
         <div id="chart-empty-state" class="chart-empty-state hidden">
-          <span class="empty-icon">📈</span>
+          <span class="empty-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          </span>
           <p>No practice sessions recorded yet. Start practicing above to visualize your speed curve!</p>
         </div>
       </div>
@@ -291,8 +509,9 @@
           <span class="card-category-tag">Accuracy Diagnostics</span>
           <h3 class="analytics-card-title">Weak Keys Heatmap</h3>
         </div>
-        <button type="button" id="practice-weak-keys-btn" class="btn btn-secondary btn-sm" title="Generate custom drill targeting missed letters">
-          <span>🎯 Drill Weak Keys</span>
+        <button type="button" id="practice-weak-keys-btn" class="btn btn-secondary btn-sm {% if not user.is_authenticated %}auth-locked-btn{% endif %}" title="Generate custom drill targeting missed letters">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+          <span>Drill Weak Keys</span>
         </button>
       </div>
 

@@ -1,48 +1,41 @@
-# TopicTyper — Learn While You Type
+# TopicTyper v5.0 — Learn While You Type
 
-An open-learning typing & reading experiment built by **Naga Research Lab**. Learn interesting Wikipedia topics while improving your typing speed and accuracy.
+An open-learning typing & reading experiment built by **Naga Research Lab**. Learn interesting Wikipedia topics and master developer typing speed across realistic programming languages and algorithms.
 
-![Theme](https://img.shields.io/badge/Theme-Deep%20Midnight%20Navy-0B1120?style=flat-square&labelColor=0B1120&color=38BDF8)
+![Version](https://img.shields.io/badge/Version-v5.0-38BDF8?style=flat-square&labelColor=0B1120)
+![Theme](https://img.shields.io/badge/Themes-Midnight%20%7C%20Coding%20%7C%20Hacking%20%7C%20Arcade-0B1120?style=flat-square&labelColor=0B1120&color=38BDF8)
 ![Built By](https://img.shields.io/badge/Built%20By-Naga%20Research%20Lab-10B981?style=flat-square&labelColor=131C31)
 ![Backend](https://img.shields.io/badge/Backend-Django%206%20%2F%20SQLite3-38BDF8?style=flat-square&labelColor=131C31)
 ![Stack](https://img.shields.io/badge/Stack-Vanilla%20JS%20%2F%20HTML5%20Canvas%20%2F%20CSS3-10B981?style=flat-square&labelColor=131C31)
 
 ---
 
-## 🌟 Django Architecture & Features
+## 🌟 What's New in TopicTyper v5.0
 
-TopicTyper is structured as a full-featured Django web application with a core app named `typer`, SQLite database persistence, and a modular client-side engine:
+### 1. Bug-Free Keystroke Engine & No Code Overflow
+- **Single-Character Space Handling**: Pressing `Space` mid-word now evaluates strictly against `targetText[currentIndex]` as a single character. If `targetText[currentIndex] !== ' '`, it marks ONLY that single character as `.incorrect` (coral red) and advances `currentIndex` by 1 without skipping the rest of the word.
+- **Zero Line Clipping**: Code blocks and multiline text never clip off the right edge (`white-space: pre-wrap; word-break: break-word;` with auto-scrolling caret tracking).
 
-### 1. Project & App Structure
-- **`topictyper_project/`**: Django project configuration (`settings.py`, `urls.py`, `wsgi.py`).
-- **`typer/`**: Core application module:
-  - **`models.py`**: SQLite database models (`TypingSession`, `KeyStat`, `CachedTopic`).
-  - **`views.py`**: Template rendering views (`home`, `practice`, `about`) and JSON REST API endpoints.
-  - **`services.py`**: Wikipedia REST API fetching, fallback resolution, and text sanitization.
-  - **`admin.py`**: Admin dashboard registration with custom filters and search capabilities.
-  - **`templates/typer/`**: Django template inheritance (`base.html`, `index.html`, `practice.html`, `about.html`).
-  - **`static/typer/`**: Clean asset organization (`css/style.css`, `js/app.js`, `img/logo.png`).
+### 2. Dedicated IDE Code Arena (`/code/`)
+- Accessible directly via the top navigation bar.
+- **Language Selector Tabs**: Interactive tabs for **Python**, **C++**, **JavaScript**, **SQL**, **Linux / Bash**, and **HTML/CSS**.
+- **Difficulty Filtering**: Filter between `All`, `Beginner`, `Intermediate`, and `DSA & Algorithms`.
+- **Curated Code Library (36+ Programs)**: Runnable, idiomatic developer snippets (decorators, smart pointers, async fetch pipelines, window functions, Docker scripts, and modern CSS components).
+- **True IDE Experience**:
+  - Code gutter with real-time active line numbering.
+  - Subtle syntax-aware coloring for keywords, strings, comments, numbers, and symbols.
+  - **Smart Enter Indentation**: Pressing Enter automatically skips leading indentation spaces on the next line so typing feels natural.
 
-### 2. SQLite Database Models
-- **`TypingSession`**: Stores completed practice runs with `topic_title`, `mode`, `duration_seconds`, `wpm`, `raw_wpm`, `accuracy`, `errors_count`, `characters_typed`, and timestamp.
-- **`KeyStat`**: Tracks per-character attempts and errors across all sessions, calculating exact error rate percentages.
-- **`CachedTopic`**: Caches sanitized Wikipedia article extracts, descriptions, and source URLs to guarantee instantaneous load times.
+### 3. User Authentication & Personalized Recommendations
+- **Themed Auth Pages**: Clean `/signup/`, `/login/`, and `/logout/` views styled with active CSS theme variables.
+- **Custom Preferences**: During signup, select favorite programming languages and initial skill level (`Beginner`, `Intermediate`, `Pro`).
+- **User-Linked Analytics**: `UserProfile` model and nullable `user` foreign key on `TypingSession` and `KeyStat` isolate personal stats for logged-in users while preserving guest mode.
+- **Smart "Recommended For You" Strip**: Displays tailored topic cards, coding programs, and targeted drills matching the user's selected languages, current WPM speed tier (`Pace Builder`, `Velocity Sprint`, `Hyperspeed Master`), and weakest keys.
 
-### 3. REST API Endpoints
-- `GET /api/topic/?q=<query>`: Checks `CachedTopic` first (case-insensitive); if not cached, fetches Wikipedia's REST API, sanitizes text, caches it in SQLite, and returns JSON.
-- `GET /api/topic/random/`: Fetches a random Wikipedia summary, sanitizes it, caches it in SQLite, and returns JSON.
-- `POST /api/session/save/`: Validates CSRF token, saves a new `TypingSession`, and atomically increments `KeyStat` records.
-- `GET /api/analytics/`: Returns the last 15 `TypingSession` records (ordered oldest-to-newest for the progress chart) and top weak keys from `KeyStat`.
-
----
-
-## 🎨 Color Psychology & Aesthetics
-
-- **Deep Midnight Navy (`#0B1120`)**: Ambient geometric dot-matrix background with GPU-accelerated drifting ambient gradient orbs (`#38BDF8`, `#6366F1`, `#10B981`).
-- **Elevated Slate-Glass Cards (`#131C31`)**: Subtle `1px solid rgba(148, 163, 184, 0.12)` borders.
-- **Cognitive Sky Blue (`#38BDF8`)**: High-visibility accent for active carets, links, and primary CTA buttons.
-- **Emerald (`#10B981`)**: Positive feedback for correct keystrokes and high accuracy.
-- **Soft Coral (`#F43F5E`)**: Gentle typo identification with subtle coral highlights.
+### 4. Specialized Developer Drills
+- **Symbols & Brackets Gauntlet**: Heavy practice on `{}` `[]` `()` `<>` `=>` `!=` `&&` `||` `;` `:`.
+- **Linux & Git Command Line**: Real terminal commands (`git`, `grep`, `awk`, `docker`, `chmod`, `ssh`).
+- **Numbers & Data Sprint**: Alphanumeric codes, IP addresses, dates, and financial figures.
 
 ---
 
@@ -51,15 +44,12 @@ TopicTyper is structured as a full-featured Django web application with a core a
 TopicTyper features a zero-dependency, procedural acoustic synthesis sound studio modeled after mechanical switches and retro typewriters:
 
 - **Dynamics Compression & Clean Master Bus**: Powered by a `DynamicsCompressorNode` and `GainNode` to ensure rapid 100+ WPM typing bursts never distort or clip.
-- **Organic Micro-Randomization**: Every keystroke applies a subtle `±6%` pitch frequency variation and `±5%` gain jitter to emulate natural physical switch variations.
-- **Differentiated Key Modeling**: Distinct acoustic profiles for regular character keys, spacebars (deep resonant hollow thump with stabilizer rattle), backspace (softer reverse-feel tap), enter/tab (solid clack return), and mistakes (gentle muted ~95 Hz thud).
 - **Selectable Switch Profiles**:
   - **Creamy Thock (Default)**: Deep PBT switch punch (`~240 Hz` down to `110 Hz`).
   - **Tactile Brown**: Balanced mid-range bump (`~330 Hz` down to `160 Hz`).
   - **Clicky Blue**: Sharp high-frequency click-jacket snap (`2.4 kHz` transient).
   - **Retro Typewriter**: Heavy vintage strike clack with metallic carriage return bell (`2093 Hz C7`).
-  - **Theme Sync (Auto)**: Dynamically adjusts acoustic textures based on active theme (cyber synth blips in Hacking, arcade pops in Funny/Arcade, IDE taps in Coding, creamy thock in Midnight).
-- **Milestone Chimes & Fanfares**: Harmonic chord completion chimes (`C5 - E5 - G5`) and celebratory 5-note sparkle fanfares (`C5 -> E5 -> G5 -> B5 -> C6`) whenever a new Personal Best WPM is achieved.
+  - **Theme Sync (Auto)**: Dynamically adjusts acoustic textures based on active visual theme.
 
 ---
 
@@ -68,34 +58,38 @@ TopicTyper features a zero-dependency, procedural acoustic synthesis sound studi
 | Shortcut | Scope | Action |
 | :--- | :--- | :--- |
 | <kbd>/</kbd> | Global | Jump directly to topic search input |
-| <kbd>Esc</kbd> | Practice Arena | Restart current chunk & reset session |
-| <kbd>Tab</kbd> | Practice Arena | Next paragraph or repeat drill |
-| <kbd>Enter</kbd> / <kbd>Space</kbd> | Results Modal | Advance to next paragraph |
-| <kbd>Esc</kbd> | Results Modal | Practice paragraph again immediately |
-| `Any key` | Practice Arena | Captures focus into typing stream |
+| <kbd>Esc</kbd> | Practice Arena / Code Arena | Restart current snippet & reset session |
+| <kbd>Tab</kbd> | Practice Arena / Code Arena | Advance to next snippet / paragraph |
+| <kbd>Enter</kbd> | Code Arena | Smart Indent (auto-advances to matching code column) |
+| <kbd>Esc</kbd> | Results Modal | Practice snippet again immediately |
+| `Any key` | Arena | Automatically captures focus into the keystream |
 
 ---
 
 ## 🚀 Installation & Running Locally
 
-1. **Install Dependencies**:
+1. **Activate Virtual Environment**:
 ```bash
-pip install -r requirements.txt
+source venv/bin/activate
 ```
 
 2. **Run Database Migrations**:
 ```bash
-python3 manage.py makemigrations
-python3 manage.py migrate
+python manage.py makemigrations
+python manage.py migrate
 ```
 
 3. **Start Development Server**:
 ```bash
-python3 manage.py runserver 8000
+python manage.py runserver 8000
 ```
 Open **`http://127.0.0.1:8000`** in your browser.
 
 4. **Run Test Suite**:
 ```bash
-python3 manage.py test
+python manage.py test
 ```
+
+---
+
+Built with pride by **Naga Research Lab**.

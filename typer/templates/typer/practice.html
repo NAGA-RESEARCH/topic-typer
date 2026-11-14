@@ -13,13 +13,24 @@
     <div class="arena-meta">
       <div class="arena-meta-top">
         <a href="{% url 'home' %}" class="back-home-link" title="Return to Setup Dashboard">
-          <span>← Back to Setup</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          <span>Setup</span>
         </a>
         <span class="badge badge-accent" id="arena-mode-pill">Complete Paragraph</span>
         <span class="badge badge-subtle" id="paragraph-counter-pill">Paragraph 1 of 1</span>
         <a id="arena-wiki-link" href="#" target="_blank" rel="noopener noreferrer" class="badge badge-outline" title="Open Wikipedia article in a new tab">
-          Wikipedia ↗
+          <span>Wikipedia</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
         </a>
+
+        <!-- Zen Mode Toggle Button -->
+        <button type="button" id="zen-mode-toggle" class="btn btn-sm btn-zen-toggle" title="Toggle Zen Mode (Dims header/footer while typing & pairs with Ambient Focus Pad)">
+          <span class="zen-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7z"></path></svg>
+          </span>
+          <span class="zen-label">Zen</span>
+          <span class="zen-indicator" id="zen-indicator-label">OFF</span>
+        </button>
       </div>
       <h2 class="arena-title" id="arena-article-title">Loading topic...</h2>
       <p class="arena-desc" id="arena-article-desc">Fetching encyclopedic extract from Wikipedia...</p>
@@ -30,6 +41,12 @@
       <div class="hud-pill">
         <span class="hud-pill-label">Speed</span>
         <span class="hud-pill-val color-sky" id="stat-wpm">0</span>
+      </div>
+
+      <!-- Live vs PB Pace Delta Pill -->
+      <div class="hud-pill hud-pill-pb" id="hud-pb-pill" title="Live Pace vs Personal Best">
+        <span class="hud-pill-label">vs PB</span>
+        <span class="hud-pill-val" id="stat-pb-delta">--</span>
       </div>
 
       <div class="hud-pill">
@@ -49,7 +66,9 @@
 
       <!-- Auto-Pause Idle Status Pill -->
       <div id="idle-status-badge" class="idle-badge hidden" title="Timer paused due to inactivity">
-        <span class="idle-dot">⏸</span>
+        <span class="idle-dot">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+        </span>
         <span>Paused — type to resume</span>
       </div>
     </div>
@@ -63,11 +82,33 @@
 
   <!-- Main Typing Card -->
   <section class="typing-card" aria-label="Typing Practice Arena">
+    <!-- Live Rhythm & Speed Waveform Pulse Bar -->
+    <div class="rhythm-waveform-bar" id="rhythm-waveform-bar" aria-label="Live typing rhythm and speed waveform">
+      <canvas id="rhythm-waveform-canvas" class="rhythm-waveform-canvas" height="14"></canvas>
+      <div class="waveform-combo-pill hidden" id="waveform-combo-pill" title="Current streak of flawless keystrokes">
+        <span class="combo-flame">⚡</span>
+        <span class="combo-label" id="waveform-combo-label">0 Streak</span>
+      </div>
+    </div>
+
     <div class="typing-section" id="typing-section" tabindex="-1">
-      <!-- Focus Prompt Overlay: unblurred text underneath keeps first lines readable -->
+      <!-- Focus Prompt Overlay -->
       <div id="focus-overlay" class="focus-overlay">
         <div class="focus-pill">
-          <span class="focus-icon">⌨️</span>
+          <span class="focus-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+              <line x1="6" y1="8" x2="6" y2="8"></line>
+              <line x1="10" y1="8" x2="10" y2="8"></line>
+              <line x1="14" y1="8" x2="14" y2="8"></line>
+              <line x1="18" y1="8" x2="18" y2="8"></line>
+              <line x1="6" y1="12" x2="6" y2="12"></line>
+              <line x1="10" y1="12" x2="10" y2="12"></line>
+              <line x1="14" y1="12" x2="14" y2="12"></line>
+              <line x1="18" y1="12" x2="18" y2="12"></line>
+              <line x1="7" y1="16" x2="17" y2="16"></line>
+            </svg>
+          </span>
           <span>Click here or start typing to begin</span>
         </div>
       </div>
@@ -84,9 +125,32 @@
         aria-label="Typing input stream"
       />
 
-      <!-- Text Stream & Glowing I-Beam Caret -->
+      <!-- Text Stream & Smooth Gliding Caret -->
       <div id="words-container" class="words-container" aria-live="polite">
         <div id="caret" class="caret" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <!-- Live Interactive Keycap Visualizer Strip -->
+    <div class="keycap-visualizer-section" id="keycap-visualizer-section">
+      <div class="keycap-header-strip">
+        <div class="keycap-status-pill">
+          <span class="keycap-led"></span>
+          <span class="keycap-title-text">Live Tactile Keyboard</span>
+          <span class="keycap-next-hint" id="keycap-next-hint">Next: <kbd class="kbd-hint" id="keycap-next-char">Space</kbd></span>
+        </div>
+        <button type="button" class="keycap-toggle-btn" id="keycap-toggle-btn" title="Toggle On-Screen Keyboard Strip">
+          <svg class="keycap-toggle-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+            <path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M6 16h12"></path>
+          </svg>
+          <span id="keycap-toggle-text">Hide Keys</span>
+        </button>
+      </div>
+      <div class="keycap-strip-body" id="keycap-strip-body">
+        <div class="keycap-board" id="keycap-board" aria-label="Mechanical keycap strip visualizer">
+          <!-- Rendered dynamically by KeycapVisualizer -->
+        </div>
       </div>
     </div>
 
@@ -94,10 +158,12 @@
     <div class="typing-card-footer">
       <div class="action-buttons">
         <button type="button" id="restart-chunk-btn" class="btn btn-outline" title="Restart current paragraph [Esc]">
-          <span>↺ Restart [Esc]</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+          <span>Restart [Esc]</span>
         </button>
         <button type="button" id="next-chunk-btn" class="btn btn-primary" title="Advance to next paragraph [Tab]">
-          <span>Next Paragraph [Tab] ➔</span>
+          <span>Next Paragraph [Tab]</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
       </div>
 
@@ -112,14 +178,16 @@
 {% endblock %}
 
 {% block modals %}
-<!-- Graphical Completion Popup Modal (Zero Text Wall) -->
+<!-- Graphical Completion Popup Modal -->
 <div id="results-modal" class="results-modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-rank-text">
   <div class="modal-backdrop" id="modal-backdrop"></div>
   <div class="modal-card modal-visual-card" id="modal-card">
     <!-- Visual Rank & Streak Header -->
     <div class="modal-visual-header">
       <div id="modal-rank-badge" class="modal-rank-badge rank-swift">
-        <span class="rank-icon" id="modal-rank-icon">⚡</span>
+        <span class="rank-icon" id="modal-rank-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        </span>
         <span class="rank-text" id="modal-rank-text">Hyperspeed Master</span>
       </div>
       <div class="modal-visual-meta">
@@ -178,15 +246,18 @@
     <div class="modal-missed-keys-strip" id="modal-missed-strip">
       <span class="missed-label">Focus Keys:</span>
       <div id="modal-missed-chips" class="modal-missed-chips">
-        <!-- Rendered dynamically -->
-        <span class="clean-run-badge">✨ 100% Clean Run</span>
+        <span class="clean-run-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span>100% Clean Run</span>
+        </span>
       </div>
       <button type="button" id="modal-drill-keys-btn" class="btn btn-sm btn-drill-keys" title="Practice instant drill with these missed keys">
-        <span>🎯 Drill Keys</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+        <span>Drill Keys</span>
       </button>
     </div>
 
-    <!-- Compatibility hidden elements for metrics scripts -->
+    <!-- Hidden compatibility elements for metrics scripts -->
     <div class="hidden" style="display:none !important;" aria-hidden="true">
       <span id="res-time">00:00</span>
       <span id="res-raw-wpm">0</span>
@@ -197,17 +268,17 @@
     <!-- Visual Actions Toolbar -->
     <div class="modal-actions-toolbar">
       <button type="button" id="modal-retry-btn" class="btn btn-secondary btn-icon-label" tabindex="0" title="Practice again [Esc]">
-        <span class="btn-icon">↺</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
         <span>Replay [Esc]</span>
       </button>
 
       <button type="button" id="modal-next-btn" class="btn btn-primary btn-icon-label btn-next-action" tabindex="0" title="Next paragraph [Enter / Space]">
         <span>Next Paragraph</span>
-        <span class="btn-icon">➔</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
       </button>
 
       <a id="modal-wiki-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-icon-only" tabindex="0" title="Read full Wikipedia article">
-        <span>📖</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
       </a>
     </div>
   </div>
