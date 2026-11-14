@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # TopicTyper v5.0 — Learn While You Type
 
 An open-learning typing & reading experiment built by **Naga Research Lab**. Learn interesting Wikipedia topics and master developer typing speed across realistic programming languages and algorithms.
@@ -93,3 +94,6 @@ python manage.py test
 ---
 
 Built with pride by **Naga Research Lab**.
+=======
+# topic-typer
+>>>>>>> 5982049ebbe280bc75dcb872c8beaec2d13cd215
