@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # TopicTyper v5.0 — Learn While You Type
 
 An open-learning typing & reading experiment built by **Naga Research Lab**. Learn interesting Wikipedia topics and master developer typing speed across realistic programming languages and algorithms.
@@ -14,10 +13,12 @@ An open-learning typing & reading experiment built by **Naga Research Lab**. Lea
 ## 🌟 What's New in TopicTyper v5.0
 
 ### 1. Bug-Free Keystroke Engine & No Code Overflow
+
 - **Single-Character Space Handling**: Pressing `Space` mid-word now evaluates strictly against `targetText[currentIndex]` as a single character. If `targetText[currentIndex] !== ' '`, it marks ONLY that single character as `.incorrect` (coral red) and advances `currentIndex` by 1 without skipping the rest of the word.
 - **Zero Line Clipping**: Code blocks and multiline text never clip off the right edge (`white-space: pre-wrap; word-break: break-word;` with auto-scrolling caret tracking).
 
 ### 2. Dedicated IDE Code Arena (`/code/`)
+
 - Accessible directly via the top navigation bar.
 - **Language Selector Tabs**: Interactive tabs for **Python**, **C++**, **JavaScript**, **SQL**, **Linux / Bash**, and **HTML/CSS**.
 - **Difficulty Filtering**: Filter between `All`, `Beginner`, `Intermediate`, and `DSA & Algorithms`.
@@ -28,12 +29,14 @@ An open-learning typing & reading experiment built by **Naga Research Lab**. Lea
   - **Smart Enter Indentation**: Pressing Enter automatically skips leading indentation spaces on the next line so typing feels natural.
 
 ### 3. User Authentication & Personalized Recommendations
+
 - **Themed Auth Pages**: Clean `/signup/`, `/login/`, and `/logout/` views styled with active CSS theme variables.
 - **Custom Preferences**: During signup, select favorite programming languages and initial skill level (`Beginner`, `Intermediate`, `Pro`).
 - **User-Linked Analytics**: `UserProfile` model and nullable `user` foreign key on `TypingSession` and `KeyStat` isolate personal stats for logged-in users while preserving guest mode.
 - **Smart "Recommended For You" Strip**: Displays tailored topic cards, coding programs, and targeted drills matching the user's selected languages, current WPM speed tier (`Pace Builder`, `Velocity Sprint`, `Hyperspeed Master`), and weakest keys.
 
 ### 4. Specialized Developer Drills
+
 - **Symbols & Brackets Gauntlet**: Heavy practice on `{}` `[]` `()` `<>` `=>` `!=` `&&` `||` `;` `:`.
 - **Linux & Git Command Line**: Real terminal commands (`git`, `grep`, `awk`, `docker`, `chmod`, `ssh`).
 - **Numbers & Data Sprint**: Alphanumeric codes, IP addresses, dates, and financial figures.
@@ -56,44 +59,50 @@ TopicTyper features a zero-dependency, procedural acoustic synthesis sound studi
 
 ## ⌨️ Keyboard Shortcuts
 
-| Shortcut | Scope | Action |
-| :--- | :--- | :--- |
-| <kbd>/</kbd> | Global | Jump directly to topic search input |
-| <kbd>Esc</kbd> | Practice Arena / Code Arena | Restart current snippet & reset session |
-| <kbd>Tab</kbd> | Practice Arena / Code Arena | Advance to next snippet / paragraph |
-| <kbd>Enter</kbd> | Code Arena | Smart Indent (auto-advances to matching code column) |
-| <kbd>Esc</kbd> | Results Modal | Practice snippet again immediately |
-| `Any key` | Arena | Automatically captures focus into the keystream |
+| Shortcut         | Scope                       | Action                                               |
+| :--------------- | :-------------------------- | :--------------------------------------------------- |
+| <kbd>/</kbd>     | Global                      | Jump directly to topic search input                  |
+| <kbd>Esc</kbd>   | Practice Arena / Code Arena | Restart current snippet & reset session              |
+| <kbd>Tab</kbd>   | Practice Arena / Code Arena | Advance to next snippet / paragraph                  |
+| <kbd>Enter</kbd> | Code Arena                  | Smart Indent (auto-advances to matching code column) |
+| <kbd>Esc</kbd>   | Results Modal               | Practice snippet again immediately                   |
+| `Any key`        | Arena                       | Automatically captures focus into the keystream      |
 
 ---
 
 ## 🚀 Installation & Running Locally
 
 1. **Activate Virtual Environment**:
+
 ```bash
 source venv/bin/activate
 ```
 
 2. **Run Database Migrations**:
+
 ```bash
 python manage.py makemigrations
 python manage.py migrate
 ```
 
 3. **Start Development Server**:
+
 ```bash
 python manage.py runserver 8000
 ```
+
 Open **`http://127.0.0.1:8000`** in your browser.
 
 4. **Run Test Suite**:
+
 ```bash
 python manage.py test
 ```
 
 ---
 
-Built with pride by **Naga Research Lab**.
-=======
+# Built with pride by **Naga Research Lab**.
+
 # topic-typer
->>>>>>> 5982049ebbe280bc75dcb872c8beaec2d13cd215
+
+> > > > > > > 5982049ebbe280bc75dcb872c8beaec2d13cd215
